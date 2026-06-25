@@ -8,7 +8,7 @@ inputDocuments:
 
 # Story 1.2: 썸네일 등록 & 메타데이터 입력
 
-Status: review
+Status: done
 
 ## Story
 
