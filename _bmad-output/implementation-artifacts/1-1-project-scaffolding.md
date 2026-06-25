@@ -4,7 +4,7 @@ baseline_commit: NO_VCS
 
 # Story 1.1: 프로젝트 스캐폴딩
 
-Status: review
+Status: done
 
 ## Story
 
@@ -101,3 +101,4 @@ claude-sonnet-4-6
 
 - 2026-06-25: Story 1.1 구현 완료 — electron-vite(react-ts) 스캐폴딩, AD-1 보안설정, electron-builder NSIS 패키징, 소스트리 골격. Electron ^42, 렌더러 프레임워크(React+TS) 결정을 아키텍처 스파인에 반영.
 - 2026-06-25: 코드리뷰 반영 — `tsconfig.node.json`/`tsconfig.web.json`에 `src/templates`, `src/shared` include 추가(누락 시 Story 1.3+에서 composite 빌드 깨짐), `App.tsx`의 죽은 'Send IPC' 데모 버튼 제거, `setAppUserModelId`를 실제 appId와 일치시킴, `sandbox: false → true`로 강화, 미사용 `build:mac`/`build:linux` 스크립트 제거. `git init`으로 버전관리 시작.
+- 2026-06-25: 최종 마무리 — 리뷰 반영 후 `npm run typecheck` / `npm run build:win` / 패키징된 실행파일(미설치) 재검증 모두 통과. 첫 커밋을 GitHub(`editornom/snsmanagement`)에 푸시. Status → done.
