@@ -1,8 +1,22 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import {
+  CONTENT_REGISTER_CHANNEL,
+  CONTENT_SELECT_THUMBNAIL_CHANNEL,
+  type IpcResult,
+  type RegisterContentRequest,
+  type RegisterContentResponseData
+} from '../shared/ipc-content'
 
 // Custom APIs for renderer
-const api = {}
+const api = {
+  selectThumbnail: (): Promise<string | null> =>
+    ipcRenderer.invoke(CONTENT_SELECT_THUMBNAIL_CHANNEL),
+  registerContent: (
+    request: RegisterContentRequest
+  ): Promise<IpcResult<RegisterContentResponseData>> =>
+    ipcRenderer.invoke(CONTENT_REGISTER_CHANNEL, request)
+}
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

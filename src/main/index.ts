@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { registerContentIpcHandlers } from './ipc/content'
 
 function createWindow(): void {
   // Create the browser window.
@@ -16,7 +17,10 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      // sandbox:true의 내장 preload 모듈 로더가 패키징(asar) 환경에서 @electron-toolkit/preload의
+      // package.json "exports" 맵을 해석하지 못해 IPC 브리지 전체가 깨지는 문제(Electron 42 확인됨).
+      // contextIsolation:true + nodeIntegration:false(AD-1 필수)는 유지하고, sandbox만 비활성화.
+      sandbox: false
     }
   })
 
@@ -51,6 +55,8 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  registerContentIpcHandlers()
 
   createWindow()
 
