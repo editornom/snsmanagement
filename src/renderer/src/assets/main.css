@@ -2,7 +2,7 @@
 
 body {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   user-select: none;
 }
@@ -29,12 +29,41 @@ code {
   width: 100%;
 }
 
+.app-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.api-key-form,
 .registration-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
   width: 480px;
   padding: 32px;
+}
+
+.api-key-form {
+  padding-bottom: 0;
+}
+
+.api-key-form h2 {
+  font-size: 18px;
+  color: var(--ev-c-text-1);
+  margin: 0;
+}
+
+.api-key-form input[type='password'] {
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--ev-c-gray-2);
+  background-color: var(--color-background-mute);
+  color: var(--ev-c-text-1);
 }
 
 .registration-form h1 {
@@ -61,7 +90,7 @@ code {
   color: var(--ev-c-text-1);
 }
 
-.registration-form button {
+.app-root button {
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
@@ -72,36 +101,84 @@ code {
   background-color: var(--ev-button-alt-bg);
 }
 
-.registration-form button:hover {
+.app-root button:hover {
   border-color: var(--ev-button-alt-hover-border);
   color: var(--ev-button-alt-hover-text);
   background-color: var(--ev-button-alt-hover-bg);
 }
 
-.registration-form .thumbnail-row {
+.app-root button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.registration-form .thumbnail-row,
+.card-generation-section .reference-images-row {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.registration-form .thumbnail-row span {
+.registration-form .thumbnail-row span,
+.card-generation-section .reference-images-row span {
   font-size: 13px;
   color: var(--ev-c-text-2);
   overflow-wrap: anywhere;
 }
 
-.registration-form .message {
+.message {
   font-size: 14px;
   padding: 10px;
   border-radius: 6px;
 }
 
-.registration-form .message.error {
+.message.error {
   color: #e85c5c;
   background-color: rgba(232, 92, 92, 0.12);
 }
 
-.registration-form .message.success {
+.message.success {
   color: #4caf50;
   background-color: rgba(76, 175, 80, 0.12);
+}
+
+.card-generation-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1400px;
+  padding: 32px;
+}
+
+.card-generation-section h2 {
+  font-size: 18px;
+  color: var(--ev-c-text-1);
+  margin: 0;
+}
+
+.card-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.card-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-frame {
+  width: 270px;
+  height: 337.5px;
+  overflow: hidden;
+  border: 1px solid var(--ev-c-gray-2);
+}
+
+.card-frame iframe {
+  border: none;
+  transform: scale(0.25);
+  transform-origin: top left;
 }

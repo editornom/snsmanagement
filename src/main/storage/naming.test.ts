@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { formatYYMMDD, getContentFolderPath, getOutputRoot, sanitizeKeyword } from './naming'
+import {
+  formatYYMMDD,
+  getCardHtmlPath,
+  getContentFolderPath,
+  getOutputRoot,
+  sanitizeKeyword
+} from './naming'
 
 describe('formatYYMMDD', () => {
   it('formats a date as YYMMDD using local date components', () => {
@@ -39,5 +45,29 @@ describe('getContentFolderPath', () => {
     expect(result).toBe(
       'C:\\Users\\junghoo\\Documents\\SNS콘텐츠제작도구\\output\\haion망분리\\260625'
     )
+  })
+})
+
+describe('getCardHtmlPath', () => {
+  it('builds {contentFolderPath}/html/{YYMMDD}_{keyword}_{2-digit index}.html', () => {
+    const result = getCardHtmlPath(
+      'C:\\Users\\junghoo\\Documents\\SNS콘텐츠제작도구\\output\\haion망분리\\260625',
+      'haion망분리',
+      new Date(2026, 5, 25),
+      1
+    )
+    expect(result).toBe(
+      'C:\\Users\\junghoo\\Documents\\SNS콘텐츠제작도구\\output\\haion망분리\\260625\\html\\260625_haion망분리_01.html'
+    )
+  })
+
+  it('pads double-digit index without truncating', () => {
+    const result = getCardHtmlPath('C:\\content', 'haion', new Date(2026, 5, 25), 10)
+    expect(result).toBe('C:\\content\\html\\260625_haion_10.html')
+  })
+
+  it('sanitizes the keyword used in the file name', () => {
+    const result = getCardHtmlPath('C:\\content', 'haion<>망분리', new Date(2026, 5, 25), 3)
+    expect(result).toBe('C:\\content\\html\\260625_haion망분리_03.html')
   })
 })

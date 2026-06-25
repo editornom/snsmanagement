@@ -7,6 +7,23 @@ import {
   type RegisterContentRequest,
   type RegisterContentResponseData
 } from '../shared/ipc-content'
+import {
+  CARD_GENERATE_CHANNEL,
+  CARD_REGENERATE_CHANNEL,
+  CARD_SELECT_REFERENCE_IMAGES_CHANNEL,
+  type GenerateCardsRequest,
+  type GenerateCardsResponseData,
+  type RegenerateCardRequest,
+  type RegenerateCardResponseData,
+  type SelectReferenceImagesResult
+} from '../shared/ipc-card'
+import {
+  SETTINGS_GET_API_KEY_STATUS_CHANNEL,
+  SETTINGS_SAVE_API_KEY_CHANNEL,
+  type GetApiKeyStatusResponseData,
+  type SaveApiKeyRequest,
+  type SaveApiKeyResponseData
+} from '../shared/ipc-settings'
 
 // Custom APIs for renderer
 const api = {
@@ -15,7 +32,19 @@ const api = {
   registerContent: (
     request: RegisterContentRequest
   ): Promise<IpcResult<RegisterContentResponseData>> =>
-    ipcRenderer.invoke(CONTENT_REGISTER_CHANNEL, request)
+    ipcRenderer.invoke(CONTENT_REGISTER_CHANNEL, request),
+  getApiKeyStatus: (): Promise<IpcResult<GetApiKeyStatusResponseData>> =>
+    ipcRenderer.invoke(SETTINGS_GET_API_KEY_STATUS_CHANNEL),
+  saveApiKey: (request: SaveApiKeyRequest): Promise<IpcResult<SaveApiKeyResponseData>> =>
+    ipcRenderer.invoke(SETTINGS_SAVE_API_KEY_CHANNEL, request),
+  selectReferenceImages: (): Promise<SelectReferenceImagesResult> =>
+    ipcRenderer.invoke(CARD_SELECT_REFERENCE_IMAGES_CHANNEL),
+  generateCards: (request: GenerateCardsRequest): Promise<IpcResult<GenerateCardsResponseData>> =>
+    ipcRenderer.invoke(CARD_GENERATE_CHANNEL, request),
+  regenerateCard: (
+    request: RegenerateCardRequest
+  ): Promise<IpcResult<RegenerateCardResponseData>> =>
+    ipcRenderer.invoke(CARD_REGENERATE_CHANNEL, request)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

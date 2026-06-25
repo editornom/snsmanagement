@@ -3,6 +3,8 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerContentIpcHandlers } from './ipc/content'
+import { registerCardIpcHandlers } from './ipc/card'
+import { registerSettingsIpcHandlers } from './ipc/settings'
 
 function createWindow(): void {
   // Create the browser window.
@@ -57,6 +59,8 @@ app.whenReady().then(() => {
   })
 
   registerContentIpcHandlers()
+  registerCardIpcHandlers()
+  registerSettingsIpcHandlers()
 
   createWindow()
 

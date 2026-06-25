@@ -4,17 +4,34 @@ import type {
   RegisterContentRequest,
   RegisterContentResponseData
 } from '../shared/ipc-content'
+import type {
+  GenerateCardsRequest,
+  GenerateCardsResponseData,
+  RegenerateCardRequest,
+  RegenerateCardResponseData,
+  SelectReferenceImagesResult
+} from '../shared/ipc-card'
+import type {
+  GetApiKeyStatusResponseData,
+  SaveApiKeyRequest,
+  SaveApiKeyResponseData
+} from '../shared/ipc-settings'
 
-export interface ContentApi {
+export interface Api {
   selectThumbnail: () => Promise<string | null>
   registerContent: (
     request: RegisterContentRequest
   ) => Promise<IpcResult<RegisterContentResponseData>>
+  getApiKeyStatus: () => Promise<IpcResult<GetApiKeyStatusResponseData>>
+  saveApiKey: (request: SaveApiKeyRequest) => Promise<IpcResult<SaveApiKeyResponseData>>
+  selectReferenceImages: () => Promise<SelectReferenceImagesResult>
+  generateCards: (request: GenerateCardsRequest) => Promise<IpcResult<GenerateCardsResponseData>>
+  regenerateCard: (request: RegenerateCardRequest) => Promise<IpcResult<RegenerateCardResponseData>>
 }
 
 declare global {
   interface Window {
     electron: ElectronAPI
-    api: ContentApi
+    api: Api
   }
 }

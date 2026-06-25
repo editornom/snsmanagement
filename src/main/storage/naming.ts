@@ -21,3 +21,17 @@ export function getOutputRoot(documentsPath: string): string {
 export function getContentFolderPath(documentsPath: string, keyword: string, date: Date): string {
   return join(getOutputRoot(documentsPath), sanitizeKeyword(keyword), formatYYMMDD(date))
 }
+
+export function getCardHtmlPath(
+  contentFolderPath: string,
+  keyword: string,
+  date: Date,
+  index: number
+): string {
+  const sequence = String(index).padStart(2, '0')
+  return join(
+    contentFolderPath,
+    'html',
+    `${formatYYMMDD(date)}_${sanitizeKeyword(keyword)}_${sequence}.html`
+  )
+}
