@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CARD_CSS_VARIABLES,
   enableInlineEditing,
+  findElementRange,
   getCssVariableValues,
   serializeCardDocument,
   setCssVariable
@@ -95,6 +96,47 @@ describe('serializeCardDocument', () => {
 
     expect(result.startsWith('<!DOCTYPE html>')).toBe(true)
     expect(result).toContain('data-edit-id="title-bar"')
+  })
+})
+
+describe('findElementRange', () => {
+  it('finds the full range of a nested data-edit-id element including its children', () => {
+    const range = findElementRange(SAMPLE_HTML, 'bullet-1')
+    expect(range).not.toBeNull()
+    const slice = SAMPLE_HTML.slice(range!.start, range!.end)
+    expect(slice.startsWith('<div data-edit-id="bullet-1">')).toBe(true)
+    expect(slice).toContain('data-edit-id="icon-1"')
+    expect(slice).toContain('Bullet One')
+    expect(slice.endsWith('</div>')).toBe(true)
+  })
+
+  it('finds the narrower range of a nested child without including the parent', () => {
+    const outerRange = findElementRange(SAMPLE_HTML, 'bullet-1')
+    const innerRange = findElementRange(SAMPLE_HTML, 'icon-1')
+    expect(innerRange).not.toBeNull()
+    const innerSlice = SAMPLE_HTML.slice(innerRange!.start, innerRange!.end)
+    expect(innerSlice.startsWith('<div data-edit-id="icon-1">')).toBe(true)
+    expect(innerSlice).not.toContain('Bullet One')
+    expect(innerRange!.start).toBeGreaterThan(outerRange!.start)
+    expect(innerRange!.end).toBeLessThan(outerRange!.end)
+  })
+
+  it('does not confuse sibling elements that share a tag name', () => {
+    const titleBarRange = findElementRange(SAMPLE_HTML, 'title-bar')
+    const footerRange = findElementRange(SAMPLE_HTML, 'footer')
+    expect(titleBarRange).not.toBeNull()
+    expect(footerRange).not.toBeNull()
+
+    const titleBarSlice = SAMPLE_HTML.slice(titleBarRange!.start, titleBarRange!.end)
+    const footerSlice = SAMPLE_HTML.slice(footerRange!.start, footerRange!.end)
+    expect(titleBarSlice).toContain('My Title')
+    expect(titleBarSlice).not.toContain('footer text')
+    expect(footerSlice).toContain('footer text')
+    expect(footerSlice).not.toContain('My Title')
+  })
+
+  it('returns null when the editId does not exist', () => {
+    expect(findElementRange(SAMPLE_HTML, 'does-not-exist')).toBeNull()
   })
 })
 

@@ -182,3 +182,13 @@ code {
   transform: scale(0.25);
   transform-origin: top left;
 }
+
+.card-code-panel {
+  width: 270px;
+  height: 200px;
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre;
+  resize: vertical;
+}

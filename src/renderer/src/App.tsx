@@ -3,6 +3,7 @@ import {
   CARD_CSS_VARIABLES,
   type CardCssVariable,
   enableInlineEditing,
+  findElementRange,
   getCssVariableValues,
   serializeCardDocument,
   setCssVariable
@@ -51,14 +52,27 @@ function App(): React.JSX.Element {
   const [cardCssValues, setCardCssValues] = useState<
     Record<number, Record<CardCssVariable, string>>
   >({})
+  const [codePanelOpen, setCodePanelOpen] = useState<Record<number, boolean>>({})
+  const [codeText, setCodeText] = useState<Record<number, string>>({})
 
   const iframeRefs = useRef(new Map<number, HTMLIFrameElement>())
   const saveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
   const cardsRef = useRef<CardState[]>([])
+  const codePanelOpenRef = useRef<Record<number, boolean>>({})
+  const codeTextRef = useRef<Record<number, string>>({})
+  const codeTextareaRefs = useRef(new Map<number, HTMLTextAreaElement>())
 
   useEffect(() => {
     cardsRef.current = cards
   }, [cards])
+
+  useEffect(() => {
+    codePanelOpenRef.current = codePanelOpen
+  }, [codePanelOpen])
+
+  useEffect(() => {
+    codeTextRef.current = codeText
+  }, [codeText])
 
   useEffect(() => {
     async function refreshApiKeyStatus(): Promise<void> {
@@ -180,6 +194,10 @@ function App(): React.JSX.Element {
       saveTimers.current.delete(card.index)
     }
 
+    // Close the code panel too — its content reflects the pre-regeneration HTML, and
+    // leaving it open would let the next code edit overwrite the regenerated file with stale text.
+    setCodePanelOpen((previous) => ({ ...previous, [card.index]: false }))
+
     setCards((previous) =>
       previous.map((item) => (item.index === card.index ? { ...item, regenerating: true } : item))
     )
@@ -270,6 +288,11 @@ function App(): React.JSX.Element {
     enableInlineEditing(doc)
     setCardCssValues((previous) => ({ ...previous, [cardIndex]: getCssVariableValues(doc) }))
     doc.body.addEventListener('input', () => scheduleSave(cardIndex, doc))
+    doc.body.addEventListener('click', (event) => {
+      const region = (event.target as Element).closest('[data-edit-id]')
+      const editId = region?.getAttribute('data-edit-id')
+      if (editId) handleElementClick(cardIndex, editId)
+    })
   }
 
   function handleColorChange(
@@ -287,6 +310,83 @@ function App(): React.JSX.Element {
       [cardIndex]: { ...previous[cardIndex], [variableName]: value }
     }))
     scheduleSave(cardIndex, doc)
+  }
+
+  function handleToggleCodePanel(cardIndex: number): void {
+    const opening = !codePanelOpenRef.current[cardIndex]
+    if (opening) {
+      const doc = iframeRefs.current.get(cardIndex)?.contentDocument
+      // Prefer the live iframe DOM (reflects inline edits not yet in `card.html`), but the
+      // iframe may not have finished loading yet right after generation — fall back to
+      // `card.html` rather than leaving the panel blank.
+      const html = doc
+        ? serializeCardDocument(doc)
+        : cardsRef.current.find((item) => item.index === cardIndex)?.html
+      if (html !== undefined) {
+        setCodeText((previous) => ({ ...previous, [cardIndex]: html }))
+      }
+    }
+    setCodePanelOpen((previous) => ({ ...previous, [cardIndex]: opening }))
+  }
+
+  function scheduleCodeCommit(cardIndex: number, html: string): void {
+    const existingTimer = saveTimers.current.get(cardIndex)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+    }
+
+    const timer = setTimeout(async () => {
+      setCards((previous) =>
+        previous.map((item) => (item.index === cardIndex ? { ...item, html } : item))
+      )
+
+      const htmlPath = cardsRef.current.find((item) => item.index === cardIndex)?.htmlPath
+      if (!htmlPath) return
+
+      try {
+        const result = await window.api.saveCardHtml({ htmlPath, html })
+        setCards((previous) =>
+          previous.map((item) =>
+            item.index === cardIndex
+              ? { ...item, saveError: result.ok ? undefined : result.error.message }
+              : item
+          )
+        )
+      } catch {
+        setCards((previous) =>
+          previous.map((item) =>
+            item.index === cardIndex
+              ? { ...item, saveError: '카드 저장 중 알 수 없는 오류가 발생했습니다' }
+              : item
+          )
+        )
+      }
+    }, 500)
+    saveTimers.current.set(cardIndex, timer)
+  }
+
+  function handleCodeTextChange(cardIndex: number, value: string): void {
+    setCodeText((previous) => ({ ...previous, [cardIndex]: value }))
+    scheduleCodeCommit(cardIndex, value)
+  }
+
+  function handleElementClick(cardIndex: number, editId: string): void {
+    if (!codePanelOpenRef.current[cardIndex]) return
+
+    const text = codeTextRef.current[cardIndex]
+    const textarea = codeTextareaRefs.current.get(cardIndex)
+    if (!text || !textarea) return
+
+    const range = findElementRange(text, editId)
+    if (!range) return
+
+    textarea.focus()
+    textarea.setSelectionRange(range.start, range.end)
+
+    const totalLines = text.split('\n').length || 1
+    const linesBeforeStart = text.slice(0, range.start).split('\n').length - 1
+    const lineHeight = textarea.scrollHeight / totalLines
+    textarea.scrollTop = linesBeforeStart * lineHeight
   }
 
   return (
@@ -414,6 +514,24 @@ function App(): React.JSX.Element {
                 )}
 
                 {card.saveError && <div className="message error">{card.saveError}</div>}
+
+                {!card.error && (
+                  <button type="button" onClick={() => handleToggleCodePanel(card.index)}>
+                    {codePanelOpen[card.index] ? '코드 닫기' : '코드 보기'}
+                  </button>
+                )}
+
+                {codePanelOpen[card.index] && (
+                  <textarea
+                    className="card-code-panel"
+                    ref={(el) => {
+                      if (el) codeTextareaRefs.current.set(card.index, el)
+                      else codeTextareaRefs.current.delete(card.index)
+                    }}
+                    value={codeText[card.index] ?? ''}
+                    onChange={(event) => handleCodeTextChange(card.index, event.target.value)}
+                  />
+                )}
 
                 <button
                   type="button"

@@ -45,3 +45,40 @@ export function getCssVariableValues(doc: Document): Record<CardCssVariable, str
 export function setCssVariable(doc: Document, name: CardCssVariable, value: string): void {
   doc.documentElement.style.setProperty(name, value)
 }
+
+export function findElementRange(
+  html: string,
+  editId: string
+): { start: number; end: number } | null {
+  const marker = `data-edit-id="${editId}"`
+  const tagRegex = /<(\/?)([a-zA-Z0-9-]+)([^>]*)>/g
+  let match: RegExpExecArray | null
+  let start = -1
+  let tagName = ''
+  let depth = 0
+
+  while ((match = tagRegex.exec(html)) !== null) {
+    const [full, closingSlash, name, attrs] = match
+    const isClosing = closingSlash === '/'
+    const isSelfClosing = attrs.trimEnd().endsWith('/')
+
+    if (start === -1) {
+      if (!isClosing && full.includes(marker)) {
+        start = match.index
+        tagName = name
+        if (isSelfClosing) return { start, end: match.index + full.length }
+        depth = 1
+      }
+      continue
+    }
+
+    if (name !== tagName || isSelfClosing) continue
+
+    depth += isClosing ? -1 : 1
+    if (depth === 0) {
+      return { start, end: match.index + full.length }
+    }
+  }
+
+  return null
+}
