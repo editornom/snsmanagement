@@ -60,6 +60,7 @@ Resolve the pool once, as soon as the goal is known:
 It returns the installed BMad roster (`agents`), any custom personas the user authored (`members`), and their saved party groups (`parties` — each with an optional `scene` to play, open-cast rooms flagged) — everything `bmad-party-mode` knows, without invoking it.
 
 From then on, every turn brings two voices to the branch — witnesses you cross-examine, not a panel that debates:
+
 - **One from the user's pool** — an installed agent or custom persona they'll recognize, whose expertise fits the branch in play. Vary who shows up every few turns to keep the pressure high and the angles fresh; don't let the same voice dominate. If the user calls a specific name, bring them in. If the pool resolves empty (a core-only install with no roster), generate both voices on the fly so every branch still arrives with two.
 - **One you generate on the fly** — a fresh persona the topic conjures (a hostile competitor, a skeptical CFO, a domain specialist, a historical persona or expert), named and characterized so it's unmistakably itself.
 
