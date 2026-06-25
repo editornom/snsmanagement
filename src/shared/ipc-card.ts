@@ -1,6 +1,7 @@
 export const CARD_SELECT_REFERENCE_IMAGES_CHANNEL = 'card:select-reference-images'
 export const CARD_GENERATE_CHANNEL = 'card:generate'
 export const CARD_REGENERATE_CHANNEL = 'card:regenerate'
+export const CARD_SAVE_HTML_CHANNEL = 'card:save-html'
 
 export interface GenerateCardsRequest {
   contentFolderPath: string
@@ -41,4 +42,15 @@ export interface RegenerateCardResponseData {
 export interface SelectReferenceImagesResult {
   paths: string[]
   truncated: boolean
+}
+
+export interface SaveCardHtmlRequest {
+  contentFolderPath: string
+  keyword: string
+  index: number
+  html: string
+}
+
+export interface SaveCardHtmlResponseData {
+  htmlPath: string
 }

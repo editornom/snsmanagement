@@ -26,17 +26,19 @@ vi.mock('../api/claude', () => ({
 }))
 
 vi.mock('../storage/card', () => ({
-  generateCard: vi.fn()
+  generateCard: vi.fn(),
+  writeCardHtmlFile: vi.fn()
 }))
 
 import { dialog } from 'electron'
 import {
   CARD_GENERATE_CHANNEL,
   CARD_REGENERATE_CHANNEL,
+  CARD_SAVE_HTML_CHANNEL,
   CARD_SELECT_REFERENCE_IMAGES_CHANNEL
 } from '../../shared/ipc-card'
 import { getApiKey } from '../settings/apiKey'
-import { generateCard } from '../storage/card'
+import { generateCard, writeCardHtmlFile } from '../storage/card'
 import { registerCardIpcHandlers } from './card'
 
 describe('card IPC handlers', () => {
@@ -204,5 +206,52 @@ describe('card IPC handlers', () => {
 
     expect(result.ok).toBe(true)
     expect(result.data?.card).toEqual({ status: 'failure', index: 2, error: 'rate limit exceeded' })
+  })
+
+  it('saves edited html without checking the API key', async () => {
+    vi.mocked(writeCardHtmlFile).mockReturnValue({ htmlPath: '/content/html/01.html' })
+
+    const handler = handlers.get(CARD_SAVE_HTML_CHANNEL)!
+    const result = (await handler(null, {
+      contentFolderPath: '/content',
+      keyword: 'haion',
+      index: 1,
+      html: '<html>edited</html>'
+    })) as { ok: boolean; data?: { htmlPath: string } }
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.htmlPath).toBe('/content/html/01.html')
+    expect(getApiKey).not.toHaveBeenCalled()
+  })
+
+  it('returns an error when save-html request is missing required fields', async () => {
+    const handler = handlers.get(CARD_SAVE_HTML_CHANNEL)!
+    const result = (await handler(null, {
+      contentFolderPath: '/content',
+      keyword: 'haion',
+      index: 1,
+      html: ''
+    })) as { ok: boolean; error?: { message: string } }
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toBe('저장할 폴더/키워드/HTML 정보가 없습니다')
+    expect(writeCardHtmlFile).not.toHaveBeenCalled()
+  })
+
+  it('returns an error when writing the html file throws', async () => {
+    vi.mocked(writeCardHtmlFile).mockImplementation(() => {
+      throw new Error('disk full')
+    })
+
+    const handler = handlers.get(CARD_SAVE_HTML_CHANNEL)!
+    const result = (await handler(null, {
+      contentFolderPath: '/content',
+      keyword: 'haion',
+      index: 1,
+      html: '<html>edited</html>'
+    })) as { ok: boolean; error?: { message: string } }
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toBe('disk full')
   })
 })

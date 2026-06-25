@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { generateCard, getReferenceImageMediaType } from './card'
+import { generateCard, getReferenceImageMediaType, writeCardHtmlFile } from './card'
 
 describe('getReferenceImageMediaType', () => {
   it('maps known extensions to media types', () => {
@@ -75,5 +75,44 @@ describe('generateCard', () => {
 
     const expectedPath = join(contentFolderPath, 'html', '260625_haion_02.html')
     expect(existsSync(expectedPath)).toBe(false)
+  })
+})
+
+describe('writeCardHtmlFile', () => {
+  let tempDir: string
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'sns-card-write-'))
+  })
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('creates the html folder and writes the file at the computed path', () => {
+    const contentFolderPath = join(tempDir, 'content')
+
+    const result = writeCardHtmlFile(
+      contentFolderPath,
+      'haion',
+      new Date(2026, 5, 25),
+      3,
+      '<!DOCTYPE html><html>edited</html>'
+    )
+
+    const expectedPath = join(contentFolderPath, 'html', '260625_haion_03.html')
+    expect(result.htmlPath).toBe(expectedPath)
+    expect(existsSync(expectedPath)).toBe(true)
+    expect(readFileSync(expectedPath, 'utf-8')).toBe('<!DOCTYPE html><html>edited</html>')
+  })
+
+  it('overwrites an existing file at the same path', () => {
+    const contentFolderPath = join(tempDir, 'content')
+
+    writeCardHtmlFile(contentFolderPath, 'haion', new Date(2026, 5, 25), 1, '<html>old</html>')
+    writeCardHtmlFile(contentFolderPath, 'haion', new Date(2026, 5, 25), 1, '<html>new</html>')
+
+    const expectedPath = join(contentFolderPath, 'html', '260625_haion_01.html')
+    expect(readFileSync(expectedPath, 'utf-8')).toBe('<html>new</html>')
   })
 })

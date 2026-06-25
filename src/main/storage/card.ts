@@ -23,6 +23,19 @@ export function getReferenceImageMediaType(filePath: string): ReferenceImageMedi
   throw new Error(`지원하지 않는 참고이미지 형식입니다: ${ext}`)
 }
 
+export function writeCardHtmlFile(
+  contentFolderPath: string,
+  keyword: string,
+  date: Date,
+  index: number,
+  html: string
+): { htmlPath: string } {
+  const htmlPath = getCardHtmlPath(contentFolderPath, keyword, date, index)
+  mkdirSync(dirname(htmlPath), { recursive: true })
+  writeFileSync(htmlPath, html, 'utf-8')
+  return { htmlPath }
+}
+
 export async function generateCard(
   input: GenerateCardInput
 ): Promise<{ htmlPath: string; html: string }> {
@@ -31,9 +44,13 @@ export async function generateCard(
   const html = await input.generateHtml(referenceImageBase64, mediaType)
 
   const now = input.now ?? new Date()
-  const htmlPath = getCardHtmlPath(input.contentFolderPath, input.keyword, now, input.index)
-  mkdirSync(dirname(htmlPath), { recursive: true })
-  writeFileSync(htmlPath, html, 'utf-8')
+  const { htmlPath } = writeCardHtmlFile(
+    input.contentFolderPath,
+    input.keyword,
+    now,
+    input.index,
+    html
+  )
 
   return { htmlPath, html }
 }

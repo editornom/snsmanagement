@@ -10,11 +10,14 @@ import {
 import {
   CARD_GENERATE_CHANNEL,
   CARD_REGENERATE_CHANNEL,
+  CARD_SAVE_HTML_CHANNEL,
   CARD_SELECT_REFERENCE_IMAGES_CHANNEL,
   type GenerateCardsRequest,
   type GenerateCardsResponseData,
   type RegenerateCardRequest,
   type RegenerateCardResponseData,
+  type SaveCardHtmlRequest,
+  type SaveCardHtmlResponseData,
   type SelectReferenceImagesResult
 } from '../shared/ipc-card'
 import {
@@ -44,7 +47,9 @@ const api = {
   regenerateCard: (
     request: RegenerateCardRequest
   ): Promise<IpcResult<RegenerateCardResponseData>> =>
-    ipcRenderer.invoke(CARD_REGENERATE_CHANNEL, request)
+    ipcRenderer.invoke(CARD_REGENERATE_CHANNEL, request),
+  saveCardHtml: (request: SaveCardHtmlRequest): Promise<IpcResult<SaveCardHtmlResponseData>> =>
+    ipcRenderer.invoke(CARD_SAVE_HTML_CHANNEL, request)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

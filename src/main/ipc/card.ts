@@ -2,23 +2,27 @@ import { app, dialog, ipcMain, safeStorage } from 'electron'
 import {
   CARD_GENERATE_CHANNEL,
   CARD_REGENERATE_CHANNEL,
+  CARD_SAVE_HTML_CHANNEL,
   CARD_SELECT_REFERENCE_IMAGES_CHANNEL,
   type CardResult,
   type GenerateCardsRequest,
   type GenerateCardsResponseData,
   type RegenerateCardRequest,
   type RegenerateCardResponseData,
+  type SaveCardHtmlRequest,
+  type SaveCardHtmlResponseData,
   type SelectReferenceImagesResult
 } from '../../shared/ipc-card'
 import type { IpcResult } from '../../shared/ipc-content'
 import { createClaudeClient, generateCardHtml } from '../api/claude'
 import { getApiKey } from '../settings/apiKey'
-import { generateCard } from '../storage/card'
+import { generateCard, writeCardHtmlFile } from '../storage/card'
 
 const MAX_REFERENCE_IMAGES = 10
 const API_KEY_MISSING_MESSAGE = 'Claude API 키를 먼저 설정해주세요'
 const MISSING_FOLDER_OR_KEYWORD_MESSAGE = '폴더 또는 키워드 정보가 없습니다'
 const NO_REFERENCE_IMAGES_MESSAGE = '참고이미지를 선택해주세요'
+const MISSING_SAVE_FIELDS_MESSAGE = '저장할 폴더/키워드/HTML 정보가 없습니다'
 
 export function registerCardIpcHandlers(): void {
   ipcMain.handle(
@@ -120,6 +124,30 @@ export function registerCardIpcHandlers(): void {
           ok: true,
           data: { card: { status: 'failure', index: request.index, error: message } }
         }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    CARD_SAVE_HTML_CHANNEL,
+    (_event, request: SaveCardHtmlRequest): IpcResult<SaveCardHtmlResponseData> => {
+      if (!request.contentFolderPath?.trim() || !request.keyword?.trim() || !request.html?.trim()) {
+        return { ok: false, error: { message: MISSING_SAVE_FIELDS_MESSAGE } }
+      }
+
+      try {
+        const { htmlPath } = writeCardHtmlFile(
+          request.contentFolderPath,
+          request.keyword,
+          new Date(),
+          request.index,
+          request.html
+        )
+        return { ok: true, data: { htmlPath } }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : '카드 저장 중 알 수 없는 오류가 발생했습니다'
+        return { ok: false, error: { message } }
       }
     }
   )

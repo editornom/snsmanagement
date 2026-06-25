@@ -9,6 +9,8 @@ import type {
   GenerateCardsResponseData,
   RegenerateCardRequest,
   RegenerateCardResponseData,
+  SaveCardHtmlRequest,
+  SaveCardHtmlResponseData,
   SelectReferenceImagesResult
 } from '../shared/ipc-card'
 import type {
@@ -27,6 +29,7 @@ export interface Api {
   selectReferenceImages: () => Promise<SelectReferenceImagesResult>
   generateCards: (request: GenerateCardsRequest) => Promise<IpcResult<GenerateCardsResponseData>>
   regenerateCard: (request: RegenerateCardRequest) => Promise<IpcResult<RegenerateCardResponseData>>
+  saveCardHtml: (request: SaveCardHtmlRequest) => Promise<IpcResult<SaveCardHtmlResponseData>>
 }
 
 declare global {
