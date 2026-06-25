@@ -45,9 +45,10 @@ export interface SelectReferenceImagesResult {
 }
 
 export interface SaveCardHtmlRequest {
-  contentFolderPath: string
-  keyword: string
-  index: number
+  // htmlPath must be the exact path returned at generation time — recomputing it from
+  // keyword+today's date would write a new dated file instead of overwriting the original
+  // when editing happens on a different calendar day than generation.
+  htmlPath: string
   html: string
 }
 

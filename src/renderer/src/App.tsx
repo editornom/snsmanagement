@@ -1,4 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  CARD_CSS_VARIABLES,
+  type CardCssVariable,
+  enableInlineEditing,
+  getCssVariableValues,
+  serializeCardDocument,
+  setCssVariable
+} from './cardEditing'
 
 interface FormMessage {
   type: 'error' | 'success'
@@ -9,8 +17,17 @@ interface CardState {
   index: number
   referenceImagePath: string
   html?: string
+  htmlPath?: string
   error?: string
   regenerating?: boolean
+  saveError?: string
+}
+
+const CSS_VARIABLE_LABELS: Record<CardCssVariable, string> = {
+  '--card-bg-color': '배경색',
+  '--card-primary-color': '주요색',
+  '--card-text-color': '텍스트색',
+  '--card-accent-color': '강조색'
 }
 
 function App(): React.JSX.Element {
@@ -31,6 +48,17 @@ function App(): React.JSX.Element {
   const [cards, setCards] = useState<CardState[]>([])
   const [generating, setGenerating] = useState(false)
   const [cardsMessage, setCardsMessage] = useState<FormMessage | null>(null)
+  const [cardCssValues, setCardCssValues] = useState<
+    Record<number, Record<CardCssVariable, string>>
+  >({})
+
+  const iframeRefs = useRef(new Map<number, HTMLIFrameElement>())
+  const saveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
+  const cardsRef = useRef<CardState[]>([])
+
+  useEffect(() => {
+    cardsRef.current = cards
+  }, [cards])
 
   useEffect(() => {
     async function refreshApiKeyStatus(): Promise<void> {
@@ -129,6 +157,7 @@ function App(): React.JSX.Element {
             index: card.index,
             referenceImagePath: referenceImagePaths[card.index - 1],
             html: card.status === 'success' ? card.html : undefined,
+            htmlPath: card.status === 'success' ? card.htmlPath : undefined,
             error: card.status === 'failure' ? card.error : undefined
           }))
         )
@@ -143,6 +172,14 @@ function App(): React.JSX.Element {
   }
 
   async function handleRegenerateCard(card: CardState): Promise<void> {
+    // Cancel any pending debounced save for this card — otherwise a stale edit from
+    // before regeneration could fire afterwards and overwrite the freshly regenerated file.
+    const pendingTimer = saveTimers.current.get(card.index)
+    if (pendingTimer) {
+      clearTimeout(pendingTimer)
+      saveTimers.current.delete(card.index)
+    }
+
     setCards((previous) =>
       previous.map((item) => (item.index === card.index ? { ...item, regenerating: true } : item))
     )
@@ -163,6 +200,7 @@ function App(): React.JSX.Element {
               ? {
                   ...item,
                   html: updated.status === 'success' ? updated.html : undefined,
+                  htmlPath: updated.status === 'success' ? updated.htmlPath : undefined,
                   error: updated.status === 'failure' ? updated.error : undefined,
                   regenerating: false
                 }
@@ -185,6 +223,70 @@ function App(): React.JSX.Element {
         )
       )
     }
+  }
+
+  function scheduleSave(cardIndex: number, doc: Document): void {
+    const existingTimer = saveTimers.current.get(cardIndex)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+    }
+
+    const timer = setTimeout(async () => {
+      const htmlPath = cardsRef.current.find((item) => item.index === cardIndex)?.htmlPath
+      if (!htmlPath) return
+
+      const html = serializeCardDocument(doc)
+      try {
+        const result = await window.api.saveCardHtml({ htmlPath, html })
+        setCards((previous) =>
+          previous.map((item) =>
+            item.index === cardIndex
+              ? { ...item, saveError: result.ok ? undefined : result.error.message }
+              : item
+          )
+        )
+      } catch {
+        setCards((previous) =>
+          previous.map((item) =>
+            item.index === cardIndex
+              ? { ...item, saveError: '카드 저장 중 알 수 없는 오류가 발생했습니다' }
+              : item
+          )
+        )
+      }
+    }, 500)
+    saveTimers.current.set(cardIndex, timer)
+  }
+
+  function handleCardIframeLoad(
+    cardIndex: number,
+    event: React.SyntheticEvent<HTMLIFrameElement>
+  ): void {
+    const iframe = event.currentTarget
+    const doc = iframe.contentDocument
+    if (!doc) return
+
+    iframeRefs.current.set(cardIndex, iframe)
+    enableInlineEditing(doc)
+    setCardCssValues((previous) => ({ ...previous, [cardIndex]: getCssVariableValues(doc) }))
+    doc.body.addEventListener('input', () => scheduleSave(cardIndex, doc))
+  }
+
+  function handleColorChange(
+    cardIndex: number,
+    variableName: CardCssVariable,
+    value: string
+  ): void {
+    const iframe = iframeRefs.current.get(cardIndex)
+    const doc = iframe?.contentDocument
+    if (!doc) return
+
+    setCssVariable(doc, variableName, value)
+    setCardCssValues((previous) => ({
+      ...previous,
+      [cardIndex]: { ...previous[cardIndex], [variableName]: value }
+    }))
+    scheduleSave(cardIndex, doc)
   }
 
   return (
@@ -289,9 +391,30 @@ function App(): React.JSX.Element {
                       width={1080}
                       height={1350}
                       title={`card-${card.index}`}
+                      onLoad={(event) => handleCardIframeLoad(card.index, event)}
                     />
                   </div>
                 )}
+
+                {!card.error && (
+                  <div className="card-color-controls">
+                    {CARD_CSS_VARIABLES.map((variableName) => (
+                      <label key={variableName} className="card-color-control">
+                        {CSS_VARIABLE_LABELS[variableName]}
+                        <input
+                          type="color"
+                          value={cardCssValues[card.index]?.[variableName] || '#000000'}
+                          onChange={(event) =>
+                            handleColorChange(card.index, variableName, event.target.value)
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {card.saveError && <div className="message error">{card.saveError}</div>}
+
                 <button
                   type="button"
                   onClick={() => handleRegenerateCard(card)}

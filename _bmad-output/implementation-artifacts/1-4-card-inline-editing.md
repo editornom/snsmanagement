@@ -8,7 +8,7 @@ inputDocuments:
 
 # Story 1.4: 카드 인라인 편집
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -39,29 +39,37 @@ so that 코드를 몰라도 빠르게 다듬을 수 있다.
   - [x] `main/ipc/card.ts`에 핸들러 추가: `contentFolderPath`/`keyword`/`html`이 비어있으면(trim 후 빈 문자열) `{ok:false, error}`(1.3에서 확립한 검증 패턴 재사용) → 유효하면 `writeCardHtmlFile(request.contentFolderPath, request.keyword, new Date(), request.index, request.html)` 호출 → `{ok:true, data:{htmlPath}}`. 이 핸들러는 Claude API를 호출하지 않으므로 API 키 미설정 상태에서도 동작해야 한다(편집은 키 설정과 무관 — `getApiKey` 체크를 넣지 않는다)
   - [x] 파일쓰기 실패(디스크 오류 등)는 try/catch로 캐치해 `{ok:false, error}` 반환(throw 금지, 1.2/1.3에서 확립한 envelope 규칙 준수)
 
-- [ ] Task 3: 색상 변수 편집 UI (AC: 2)
-  - [ ] `cardEditing.ts`에 `CARD_CSS_VARIABLES = ['--card-bg-color', '--card-primary-color', '--card-text-color', '--card-accent-color'] as const` 상수 추가(Story 1.3에서 확정된 4개 변수명 그대로 재사용 — 임의 확장/변경 금지, 1.5/1.6도 동일 4개를 가정함)
-  - [ ] `getCssVariableValues(doc: Document): Record<string, string>` — `getComputedStyle(doc.documentElement)`로 4개 변수의 현재 계산값(hex 등)을 읽어 반환. 카드 미리보기 로드 시 색상 입력 컨트롤의 초기값으로 사용
-  - [ ] `setCssVariable(doc: Document, name: string, value: string): void` — `doc.documentElement.style.setProperty(name, value)`. `:root` 룰을 직접 수정하지 않고 `<html>` 엘리먼트에 인라인 스타일을 추가하는 방식 — 인라인 스타일이 `:root` 선택자보다 우선순위가 높아 즉시 화면에 반영되고, 원본 `<style>` 블록(`:root` 정의)은 그대로 보존된다("구조는 그대로 유지" 요구와 정확히 일치)
-  - [ ] `App.tsx`의 각 카드 미리보기 하단(재생성 버튼 옆)에 4개 색상 입력(`<input type="color">`, 변수명 라벨과 함께)을 추가. 컨트롤은 iframe 로드 후 `getCssVariableValues`로 초기값 세팅, `onChange`마다 `setCssVariable` 호출 후 Task 4의 저장 파이프라인을 트리거
+- [x] Task 3: 색상 변수 편집 UI (AC: 2)
+  - [x] `cardEditing.ts`에 `CARD_CSS_VARIABLES = ['--card-bg-color', '--card-primary-color', '--card-text-color', '--card-accent-color'] as const` 상수 추가(Story 1.3에서 확정된 4개 변수명 그대로 재사용 — 임의 확장/변경 금지, 1.5/1.6도 동일 4개를 가정함)
+  - [x] `getCssVariableValues(doc: Document): Record<string, string>` — `getComputedStyle(doc.documentElement)`로 4개 변수의 현재 계산값(hex 등)을 읽어 반환. 카드 미리보기 로드 시 색상 입력 컨트롤의 초기값으로 사용
+  - [x] `setCssVariable(doc: Document, name: string, value: string): void` — `doc.documentElement.style.setProperty(name, value)`. `:root` 룰을 직접 수정하지 않고 `<html>` 엘리먼트에 인라인 스타일을 추가하는 방식 — 인라인 스타일이 `:root` 선택자보다 우선순위가 높아 즉시 화면에 반영되고, 원본 `<style>` 블록(`:root` 정의)은 그대로 보존된다("구조는 그대로 유지" 요구와 정확히 일치)
+  - [x] `App.tsx`의 각 카드 미리보기 하단(재생성 버튼 옆)에 4개 색상 입력(`<input type="color">`, 변수명 라벨과 함께)을 추가. 컨트롤은 iframe 로드 후 `getCssVariableValues`로 초기값 세팅, `onChange`마다 `setCssVariable` 호출 후 Task 4의 저장 파이프라인을 트리거
 
-- [ ] Task 4: 편집 → 저장 연결 (renderer) (AC: 1, 2)
-  - [ ] 카드 `<iframe>`의 `onLoad` 핸들러에서 `enableInlineEditing(iframe.contentDocument)` 호출 + 색상 입력 초기값 세팅(Task 3) + 텍스트/색상 편집 시 호출할 디바운스된 저장 함수 등록
-  - [ ] 디바운스 저장 함수(간단한 `setTimeout` 기반, 약 500ms — 별도 라이브러리 불필요): iframe 내부에서 `input`(contenteditable 텍스트 편집) 또는 색상 변경이 발생하면 `serializeCardDocument(iframe.contentDocument)` 결과를 `window.api.saveCardHtml({ contentFolderPath: folderPath, keyword, index: card.index, html })`로 저장
-  - [ ] **iframe을 React 상태로 다시 렌더링하지 않는다 — 핵심 설계 결정:** 현재 카드 미리보기는 `srcDoc={card.html}`로 1.3에서 구현되어 있다. 편집 중 매 키 입력마다 `card.html` 상태(`setCards`)를 갱신해 `srcDoc`을 다시 설정하면 iframe이 통째로 리로드되어 커서 위치/포커스가 사라지고 방금 입력한 내용이 날아간다. 따라서 **텍스트/색상 편집 결과는 React `cards` 상태에 절대 반영하지 않고**, iframe의 라이브 DOM 안에서만 유지하며 디스크 저장만 비동기로 수행한다. `card.html` 상태는 최초 생성/재생성 시점의 값으로만 유지되고(재생성을 누르면 의도적으로 편집 내용이 사라지며 새로 생성됨 — 기존 1.3 재생성 동작과 일치), 편집 중에는 변경되지 않는다
-  - [ ] 저장 실패 시(디스크 오류 등) 카드 영역에 작게 에러 메시지를 표시하되, 편집 자체(화면 반영)는 막지 않는다(AC1의 "화면에 즉시 반영"은 항상 보장되어야 함 — 저장 실패가 편집 UX를 막아서는 안 됨)
+- [x] Task 4: 편집 → 저장 연결 (renderer) (AC: 1, 2)
+  - [x] 카드 `<iframe>`의 `onLoad` 핸들러에서 `enableInlineEditing(iframe.contentDocument)` 호출 + 색상 입력 초기값 세팅(Task 3) + 텍스트/색상 편집 시 호출할 디바운스된 저장 함수 등록
+  - [x] 디바운스 저장 함수(간단한 `setTimeout` 기반, 약 500ms — 별도 라이브러리 불필요): iframe 내부에서 `input`(contenteditable 텍스트 편집) 또는 색상 변경이 발생하면 `serializeCardDocument(iframe.contentDocument)` 결과를 `window.api.saveCardHtml({ contentFolderPath: folderPath, keyword, index: card.index, html })`로 저장
+  - [x] **iframe을 React 상태로 다시 렌더링하지 않는다 — 핵심 설계 결정:** 현재 카드 미리보기는 `srcDoc={card.html}`로 1.3에서 구현되어 있다. 편집 중 매 키 입력마다 `card.html` 상태(`setCards`)를 갱신해 `srcDoc`을 다시 설정하면 iframe이 통째로 리로드되어 커서 위치/포커스가 사라지고 방금 입력한 내용이 날아간다. 따라서 **텍스트/색상 편집 결과는 React `cards` 상태에 절대 반영하지 않고**, iframe의 라이브 DOM 안에서만 유지하며 디스크 저장만 비동기로 수행한다. `card.html` 상태는 최초 생성/재생성 시점의 값으로만 유지되고(재생성을 누르면 의도적으로 편집 내용이 사라지며 새로 생성됨 — 기존 1.3 재생성 동작과 일치), 편집 중에는 변경되지 않는다
+  - [x] 저장 실패 시(디스크 오류 등) 카드 영역에 작게 에러 메시지를 표시하되, 편집 자체(화면 반영)는 막지 않는다(AC1의 "화면에 즉시 반영"은 항상 보장되어야 함 — 저장 실패가 편집 UX를 막아서는 안 됨)
 
 - [x] Task 5: Preload 타입드 API (AC: 1, 2)
   - [x] `src/preload/index.ts`의 `api`에 `saveCardHtml(request: SaveCardHtmlRequest): Promise<IpcResult<SaveCardHtmlResponseData>>` 추가, `src/preload/index.d.ts`의 `Api` 인터페이스에도 추가
 
-- [ ] Task 6: 테스트 (AC: 1, 2)
+- [x] Task 6: 테스트 (AC: 1, 2)
   - [x] `cardEditing.ts`는 순수 DOM 조작 로직이라 Electron 없이 jsdom으로 단위테스트 가능 — **이번 스토리에서 처음 도입**: `jsdom`을 devDependency로 추가하고, `src/renderer/src/cardEditing.test.ts` 파일 맨 위에 `// @vitest-environment jsdom` 주석 추가(현재 `vitest.config.ts`는 기본 node 환경이므로 파일 단위로 오버라이드 — 다른 테스트 파일에 영향 없음)
   - [x] `cardEditing.test.ts`: `enableInlineEditing`이 텍스트 보유 리프 엘리먼트만 `contentEditable=true`로 만들고 컨테이너/`<svg>`는 건너뛰는지, `serializeCardDocument`가 `<!DOCTYPE html>`로 시작하는 문자열을 반환하는지, `getCssVariableValues`/`setCssVariable`이 4개 변수를 올바르게 읽고 쓰는지 검증
   - [x] `main/storage/card.test.ts`: `writeCardHtmlFile` 추출 리팩터링 후 기존 `generateCard` 테스트 회귀 확인 + `writeCardHtmlFile` 자체의 신규 단위테스트(파일 생성, 폴더 자동 생성)
   - [x] `main/ipc/card.test.ts`: `card:save-html` 핸들러 테스트(정상 저장, 필수 필드 누락 시 에러, API 키 미설정이어도 정상 동작하는지 — `getApiKey`를 호출하지 않음을 확인)
-  - [ ] **Claude API 호출 없이 검증 가능 — 비용 발생 없음.** Electron 런타임 실측(contenteditable 편집, 디바운스 저장, 색상피커, srcDoc 재설정 안 됨 확인)은 패키징된 `.exe`를 CDP로 검증. 참고이미지를 매번 새로 생성하지 않고, 1.3 골격계약을 따르는 고정 샘플 HTML(`data-edit-id` 5종 + CSS 변수 4종 포함)을 테스트 폴더에 직접 배치한 뒤 `card:save-html`/contenteditable 동작을 CDP로 직접 호출/조작해 검증
+  - [x] **Claude API 호출 없이 검증 가능 — 비용 발생 없음.** Electron 런타임 실측(contenteditable 편집, 디바운스 저장, 색상피커, srcDoc 재설정 안 됨 확인)은 패키징된 `.exe`를 CDP로 검증. 참고이미지를 매번 새로 생성하지 않고, 1.3 골격계약을 따르는 고정 샘플 HTML(`data-edit-id` 5종 + CSS 변수 4종 포함)을 테스트 폴더에 직접 배치한 뒤 `card:save-html`/contenteditable 동작을 CDP로 직접 호출/조작해 검증
 
-## Dev Notes
+### Review Findings
+
+- [x] [Review][Patch] `card:save-html`이 저장 시점마다 `new Date()`로 파일 경로를 재계산해 자정을 넘겨 편집하면 원본 파일이 아닌 새 날짜의 파일을 생성하던 버그 — 이미 반영됨: `SaveCardHtmlRequest`를 `{htmlPath, html}`로 변경하고 생성 시점에 반환된 정확한 경로를 그대로 덮어쓰도록 수정 [src/main/ipc/card.ts, src/main/storage/card.ts, src/shared/ipc-card.ts, src/renderer/src/App.tsx]
+- [x] [Review][Patch] 카드 재생성(regenerate) 시 이전 편집의 디바운스 저장 타이머가 취소되지 않아, 재생성된 새 내용을 stale 편집 내용으로 덮어쓸 수 있던 경쟁 조건 — 이미 반영됨: `handleRegenerateCard` 시작 시 해당 인덱스의 대기 중인 저장 타이머를 명시적으로 취소 [src/renderer/src/App.tsx]
+- [x] [Review][Defer] Claude가 생성하는 카드 HTML에 인라인 태그(`<span>`/`<b>` 등)가 섞이면 leaf-text 감지 규칙("자식 엘리먼트 없음")이 깨질 수 있음 [src/renderer/src/cardEditing.ts] — deferred, 1.3 골격계약상 카드 내부 텍스트 구조는 단순 텍스트로 가정되어 있고 이번 스토리는 구조 변경을 범위 밖으로 명시함. 시스템 프롬프트(`card-system-prompt.ts`)가 향후 인라인 태그를 생성하게 되면 재검토 필요.
+- [x] [Review][Defer] `serializeCardDocument`의 `outerHTML` 직렬화가 주석/SVG 네임스페이스/속성 순서 등 더 복잡한 실제 생성 마크업에서도 구조를 온전히 보존하는지는 단순 골격계약 샘플 1종으로만 CDP 검증됨 [src/renderer/src/cardEditing.ts] — deferred, 실측은 PASS했으나 다양한 실제 생성 결과물에 대한 자동화 회귀 테스트는 없음. 향후 회귀 발생 시 추가 픽스처로 보강.
+- [x] [Review][Defer] `iframeRefs`/`saveTimers` Map이 카드 인덱스 기준으로 정리(cleanup)되지 않아 매우 오래 유지되는 세션에서 약간의 메모리 누적 가능성 [src/renderer/src/App.tsx] — deferred, 현재 앱은 `App` 컴포넌트가 실질적으로 unmount되지 않는 단일 세션 구조라 실사용 영향은 낮음.
+
+
 
 - **편집 단위 = "텍스트 리프 엘리먼트"(Task 0의 신규 결정):** Claude가 생성하는 카드 내부 구조(클래스명, DOM 깊이)는 참고이미지마다 달라지므로, 특정 클래스명에 의존한 편집 대상 지정은 불가능하다. "자식 엘리먼트 없음 + 텍스트 보유"라는 구조 무관 규칙으로 일반화한 것이 이번 스토리의 핵심 결정이며, Story 1.5(코드창 동기화)도 동일한 "리프 텍스트 엘리먼트" 단위를 클릭→코드 위치 매핑의 기준으로 재사용해야 한다.
 - **색상 변수는 `:root` 텍스트를 고치지 않고 `documentElement` 인라인 스타일로 덮어쓴다(Task 3 신규 결정):** CSS 우선순위상 인라인 스타일이 `:root{...}` 선택자보다 항상 우선하므로 즉시 적용되고, 원본 `<style>` 블록은 변경되지 않아 "구조는 그대로 유지"를 자연히 만족한다. `outerHTML` 직렬화 시 인라인 스타일도 함께 저장되므로 재로드 후에도 색상이 유지된다.
@@ -95,6 +103,9 @@ claude-sonnet-4-6
 ### Debug Log References
 
 - 작업 중간 지점에서 사용자 요청으로 일시 정지(`작업 여기까지만 하고 저장해줘`). Task 0/1/2/5 및 Task 6의 단위테스트 3개 항목까지 완료, Task 3/4(색상 UI, 디바운스 저장 연결)와 Task 6의 CDP 실측 검증은 미완. 중단 시점에 코드가 깨지지 않도록 `card:save-html` 핸들러/preload 와이어링까지 완결한 상태로 체크포인트.
+- 후속 세션에서 재개: Task 3(색상 입력 UI)/Task 4(편집→저장 연결)를 `App.tsx`에 구현, Task 6의 CDP 실측까지 완료해 Status를 `review`로 전환.
+- CDP 실측 방법: `npm run build` 후 `ELECTRON_RUN_AS_NODE` 환경변수가 켜져 있으면(터미널 프로필에서 자동 설정되는 경우가 있음) `electron.exe`가 평범한 Node로 실행되어 앱이 뜨지 않는 함정이 있었다 — `env -u ELECTRON_RUN_AS_NODE`로 언셋하고 `node_modules/electron/dist/electron.exe . --remote-debugging-port=9333`으로 직접 기동해 우회. 네이티브 파일 열기 다이얼로그(썸네일/참고이미지 선택)는 CDP로 제어할 수 없고 `contextBridge`로 노출된 `window.api`는 `Object.freeze`되어 렌더러에서 몬키패치도 불가능했다 — 등록 폼 전체를 거치는 대신, `App.tsx`에 `setCards`/`setFolderPath`/`setKeyword`를 `window` 전역에 노출하는 임시 디버그 훅을 추가해 1.3 골격계약 고정 샘플 HTML을 실제 컴포넌트 상태로 주입한 뒤 실제 프로덕션 코드 경로(핸들러/디바운스 저장)를 그대로 실행시켜 검증했고, 검증 완료 후 훅 코드는 즉시 제거하고 재빌드함(커밋에는 포함되지 않음).
+- 실측 결과: leaf 텍스트 엘리먼트만 `contentEditable=true`(컨테이너/svg 제외), 실제 Chromium에서 `getComputedStyle`이 `:root` CSS 변수를 정상 cascade(jsdom 한계가 실측에서는 발생하지 않음 확인), 색상피커 초기값이 계산된 색상과 일치, 텍스트 편집 시 `srcdoc` 속성이 변경되지 않음(iframe 리로드 없음 확인) 및 라이브 DOM에 편집 내용 유지, 색상 변경 시 `documentElement` 인라인 스타일로 적용되고 원본 `:root` 블록 보존, 디바운스(~500ms) 후 실제 `card:save-html` IPC를 통해 디스크에 텍스트+색상 변경이 함께 저장됨, `Enter` 키 입력이 `preventDefault`되어 자식 노드 수 불변 확인. 모두 PASS.
 
 ### Completion Notes List
 
@@ -103,7 +114,10 @@ claude-sonnet-4-6
 - Task 2: `card:save-html` IPC 채널 추가(`shared/ipc-card.ts` 타입, `main/ipc/card.ts` 핸들러). API 키 체크 없이 동작하도록 의도적으로 `getApiKey` 호출 생략(Dev Notes 경고사항 반영) — 테스트로 `getApiKey`가 호출되지 않음을 명시적으로 검증.
 - Task 5: `src/preload/index.ts`/`index.d.ts`에 `saveCardHtml` API 노출.
 - Task 6(일부): `cardEditing.test.ts`를 jsdom 환경(`// @vitest-environment jsdom`)으로 신규 작성(8건) — jsdom이 `<style>` 블록의 CSS 커스텀 프로퍼티를 cascade하지 않는 한계가 있어, "computed value 읽기" 테스트는 인라인 스타일로 시뮬레이션해 검증(실제 Electron Chromium 환경에서는 `:root` cascade가 정상 동작하므로 CDP 실측에서 재확인 필요 — 아직 미실시). `card.test.ts`(storage)에 `writeCardHtmlFile` 단위테스트 2건 추가. `card.test.ts`(ipc)에 `card:save-html` 핸들러 테스트 3건 추가(정상 저장/필드누락/쓰기실패, API 키 미체크 확인).
-- 검증: 단위테스트 52건 전체 통과(`npx vitest run`), `npm run typecheck`/`npm run lint` 통과. **남은 작업(Task 3/4 UI 와이어링, Task 6 CDP 실측)은 후속 세션에서 이어서 진행 필요 — dev-story 워크플로가 아직 완료되지 않았으므로 Status는 `ready-for-dev`로 유지(코드 변경 사항은 Tasks/File List/Dev Agent Record에 정직하게 기록).**
+- Task 3: `App.tsx`에 4개 색상 입력(`<input type="color">`)을 카드별로 추가, iframe `onLoad` 시 `getCssVariableValues`로 초기값 세팅, `onChange` 시 `setCssVariable` 호출 후 저장 트리거.
+- Task 4: iframe `onLoad`에서 `enableInlineEditing` 호출 + `doc.body`에 `input` 리스너로 디바운스(500ms, `setTimeout`/`clearTimeout`) 저장 함수 등록. 저장은 `serializeCardDocument` → `window.api.saveCardHtml`. `card.html`(React 상태)은 절대 갱신하지 않고 iframe 라이브 DOM에서만 편집 유지(설계 결정 준수). 저장 실패 시 `card.saveError`에 메시지를 담아 카드 영역에 표시, 편집 자체는 막지 않음.
+- Task 6(CDP 실측, 마지막 항목): 빌드된 앱을 `--remote-debugging-port`로 띄우고 CDP `Runtime.evaluate`로 실제 컴포넌트 코드 경로를 구동해 검증(상세는 Debug Log 참고). 모든 항목 PASS — jsdom 환경에서 우려했던 `:root` CSS 변수 cascade 한계가 실제 Chromium에서는 문제 없음을 확인.
+- 검증: 단위테스트 52건 전체 통과(`npx vitest run`), `npm run typecheck`/`npm run lint` 통과, CDP 실측 전체 PASS. 모든 태스크 완료.
 
 ### File List
 
@@ -117,3 +131,9 @@ claude-sonnet-4-6
 - `src/main/ipc/card.test.ts` (수정 — `card:save-html` 핸들러 테스트 추가)
 - `src/preload/index.ts` (수정 — `saveCardHtml` API 노출)
 - `src/preload/index.d.ts` (수정 — `Api` 인터페이스에 `saveCardHtml` 추가)
+- `src/renderer/src/App.tsx` (수정 — 카드별 색상 입력 UI, iframe `onLoad` 인라인 편집 활성화 + 디바운스 저장 연결, 저장 실패 메시지 표시)
+
+### Change Log
+
+- 2026-06-26: Task 3(색상 변수 편집 UI)/Task 4(편집→저장 연결) `App.tsx` 구현 완료, Task 6 CDP 실측 검증 완료(빌드된 앱을 실 Electron Chromium에서 구동해 contenteditable/색상피커/디바운스 저장/`srcDoc` 미재설정 확인). 전체 태스크 완료, Status: in-progress → review.
+- 2026-06-26: 코드 리뷰(Blind Hunter/Edge Case Hunter/Acceptance Auditor 3개 레이어) 진행, patch 2건 발견 즉시 반영 — `card:save-html` 날짜 재계산 버그(자정 넘겨 편집 시 원본 대신 새 파일 생성) 수정, 재생성 시 stale 디바운스 저장 타이머 취소 누락 수정. defer 3건은 `deferred-work.md`에 기록. Status: review → done.

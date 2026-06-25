@@ -2,7 +2,12 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { generateCard, getReferenceImageMediaType, writeCardHtmlFile } from './card'
+import {
+  generateCard,
+  getReferenceImageMediaType,
+  overwriteCardHtmlFile,
+  writeCardHtmlFile
+} from './card'
 
 describe('getReferenceImageMediaType', () => {
   it('maps known extensions to media types', () => {
@@ -114,5 +119,36 @@ describe('writeCardHtmlFile', () => {
 
     const expectedPath = join(contentFolderPath, 'html', '260625_haion_01.html')
     expect(readFileSync(expectedPath, 'utf-8')).toBe('<html>new</html>')
+  })
+})
+
+describe('overwriteCardHtmlFile', () => {
+  let tempDir: string
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'sns-card-overwrite-'))
+  })
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('writes to the exact given path, creating parent folders as needed', () => {
+    const htmlPath = join(tempDir, 'content', 'html', '260101_haion_01.html')
+
+    overwriteCardHtmlFile(htmlPath, '<html>edited</html>')
+
+    expect(existsSync(htmlPath)).toBe(true)
+    expect(readFileSync(htmlPath, 'utf-8')).toBe('<html>edited</html>')
+  })
+
+  it('overwrites the file at the given path regardless of the current date', () => {
+    // Simulates editing a card on a different calendar day than it was generated —
+    // the original generation-date filename must still be the one that gets updated.
+    const htmlPath = join(tempDir, 'content', 'html', '260101_haion_01.html')
+    overwriteCardHtmlFile(htmlPath, '<html>old</html>')
+    overwriteCardHtmlFile(htmlPath, '<html>new</html>')
+
+    expect(readFileSync(htmlPath, 'utf-8')).toBe('<html>new</html>')
   })
 })

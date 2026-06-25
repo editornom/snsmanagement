@@ -31,9 +31,13 @@ export function writeCardHtmlFile(
   html: string
 ): { htmlPath: string } {
   const htmlPath = getCardHtmlPath(contentFolderPath, keyword, date, index)
+  overwriteCardHtmlFile(htmlPath, html)
+  return { htmlPath }
+}
+
+export function overwriteCardHtmlFile(htmlPath: string, html: string): void {
   mkdirSync(dirname(htmlPath), { recursive: true })
   writeFileSync(htmlPath, html, 'utf-8')
-  return { htmlPath }
 }
 
 export async function generateCard(
