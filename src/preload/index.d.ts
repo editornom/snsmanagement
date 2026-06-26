@@ -21,6 +21,7 @@ import type {
   SaveApiKeyResponseData
 } from '../shared/ipc-settings'
 import type { RenderCardsRequest, RenderCardsResponseData } from '../shared/ipc-image'
+import type { CaptureFramesRequest, CaptureFramesResponseData } from '../shared/ipc-frame'
 
 export interface Api {
   selectThumbnail: () => Promise<string | null>
@@ -37,6 +38,9 @@ export interface Api {
     request: EditCardWithInstructionRequest
   ) => Promise<IpcResult<EditCardWithInstructionResponseData>>
   renderCardsToImages: (request: RenderCardsRequest) => Promise<IpcResult<RenderCardsResponseData>>
+  captureCardFrames: (
+    request: CaptureFramesRequest
+  ) => Promise<IpcResult<CaptureFramesResponseData>>
 }
 
 declare global {

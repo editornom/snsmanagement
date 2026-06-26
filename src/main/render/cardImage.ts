@@ -29,7 +29,7 @@ export async function renderCardHtmlToPng(html: string, outputPath: string): Pro
   }
 }
 
-function loadHtml(win: BrowserWindow, html: string): Promise<void> {
+export function loadHtml(win: BrowserWindow, html: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error('카드 이미지 렌더링이 시간 초과되었습니다'))

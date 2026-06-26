@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { registerContentIpcHandlers } from './ipc/content'
 import { registerCardIpcHandlers } from './ipc/card'
 import { registerImageIpcHandlers } from './ipc/image'
+import { registerFrameIpcHandlers } from './ipc/frame'
 import { registerSettingsIpcHandlers } from './ipc/settings'
 
 function createWindow(): void {
@@ -62,6 +63,7 @@ app.whenReady().then(() => {
   registerContentIpcHandlers()
   registerCardIpcHandlers()
   registerImageIpcHandlers()
+  registerFrameIpcHandlers()
   registerSettingsIpcHandlers()
 
   createWindow()
