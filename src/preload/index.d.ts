@@ -5,6 +5,8 @@ import type {
   RegisterContentResponseData
 } from '../shared/ipc-content'
 import type {
+  EditCardWithInstructionRequest,
+  EditCardWithInstructionResponseData,
   GenerateCardsRequest,
   GenerateCardsResponseData,
   RegenerateCardRequest,
@@ -30,6 +32,9 @@ export interface Api {
   generateCards: (request: GenerateCardsRequest) => Promise<IpcResult<GenerateCardsResponseData>>
   regenerateCard: (request: RegenerateCardRequest) => Promise<IpcResult<RegenerateCardResponseData>>
   saveCardHtml: (request: SaveCardHtmlRequest) => Promise<IpcResult<SaveCardHtmlResponseData>>
+  editCardWithInstruction: (
+    request: EditCardWithInstructionRequest
+  ) => Promise<IpcResult<EditCardWithInstructionResponseData>>
 }
 
 declare global {

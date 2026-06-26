@@ -192,3 +192,14 @@ code {
   white-space: pre;
   resize: vertical;
 }
+
+.card-instruction-row {
+  display: flex;
+  gap: 4px;
+  width: 270px;
+}
+
+.card-instruction-row input {
+  flex: 1;
+  min-width: 0;
+}

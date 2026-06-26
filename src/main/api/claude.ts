@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { CARD_EDIT_SYSTEM_PROMPT } from '../../templates/card-edit-system-prompt'
 import { CARD_SYSTEM_PROMPT } from '../../templates/card-system-prompt'
 
 export type ReferenceImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp'
@@ -30,6 +31,41 @@ export async function generateCardHtml(
               source: { type: 'base64', media_type: mediaType, data: referenceImageBase64 }
             },
             { type: 'text', text: '이 참고이미지를 정보카드 HTML로 변환해줘' }
+          ]
+        }
+      ]
+    },
+    { timeout: CARD_REQUEST_TIMEOUT_MS }
+  )
+
+  const html = response.content
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join('')
+
+  if (!html.trim()) {
+    throw new Error('Claude API가 빈 응답을 반환했습니다')
+  }
+
+  return html
+}
+
+export async function editCardHtml(
+  client: Anthropic,
+  currentHtml: string,
+  instruction: string
+): Promise<string> {
+  const response = await client.messages.create(
+    {
+      model: CARD_MODEL,
+      max_tokens: CARD_MAX_TOKENS,
+      system: CARD_EDIT_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: `현재 카드 HTML:\n${currentHtml}` },
+            { type: 'text', text: `수정 지시: ${instruction}` }
           ]
         }
       ]

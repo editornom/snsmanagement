@@ -2,6 +2,7 @@ export const CARD_SELECT_REFERENCE_IMAGES_CHANNEL = 'card:select-reference-image
 export const CARD_GENERATE_CHANNEL = 'card:generate'
 export const CARD_REGENERATE_CHANNEL = 'card:regenerate'
 export const CARD_SAVE_HTML_CHANNEL = 'card:save-html'
+export const CARD_EDIT_WITH_INSTRUCTION_CHANNEL = 'card:edit-with-instruction'
 
 export interface GenerateCardsRequest {
   contentFolderPath: string
@@ -54,4 +55,14 @@ export interface SaveCardHtmlRequest {
 
 export interface SaveCardHtmlResponseData {
   htmlPath: string
+}
+
+export interface EditCardWithInstructionRequest {
+  htmlPath: string
+  html: string
+  instruction: string
+}
+
+export interface EditCardWithInstructionResponseData {
+  html: string
 }

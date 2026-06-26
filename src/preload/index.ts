@@ -8,10 +8,13 @@ import {
   type RegisterContentResponseData
 } from '../shared/ipc-content'
 import {
+  CARD_EDIT_WITH_INSTRUCTION_CHANNEL,
   CARD_GENERATE_CHANNEL,
   CARD_REGENERATE_CHANNEL,
   CARD_SAVE_HTML_CHANNEL,
   CARD_SELECT_REFERENCE_IMAGES_CHANNEL,
+  type EditCardWithInstructionRequest,
+  type EditCardWithInstructionResponseData,
   type GenerateCardsRequest,
   type GenerateCardsResponseData,
   type RegenerateCardRequest,
@@ -49,7 +52,11 @@ const api = {
   ): Promise<IpcResult<RegenerateCardResponseData>> =>
     ipcRenderer.invoke(CARD_REGENERATE_CHANNEL, request),
   saveCardHtml: (request: SaveCardHtmlRequest): Promise<IpcResult<SaveCardHtmlResponseData>> =>
-    ipcRenderer.invoke(CARD_SAVE_HTML_CHANNEL, request)
+    ipcRenderer.invoke(CARD_SAVE_HTML_CHANNEL, request),
+  editCardWithInstruction: (
+    request: EditCardWithInstructionRequest
+  ): Promise<IpcResult<EditCardWithInstructionResponseData>> =>
+    ipcRenderer.invoke(CARD_EDIT_WITH_INSTRUCTION_CHANNEL, request)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

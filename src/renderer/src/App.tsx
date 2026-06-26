@@ -54,6 +54,9 @@ function App(): React.JSX.Element {
   >({})
   const [codePanelOpen, setCodePanelOpen] = useState<Record<number, boolean>>({})
   const [codeText, setCodeText] = useState<Record<number, string>>({})
+  const [instructionText, setInstructionText] = useState<Record<number, string>>({})
+  const [previousHtml, setPreviousHtml] = useState<Record<number, string>>({})
+  const [applyingInstruction, setApplyingInstruction] = useState<Record<number, boolean>>({})
 
   const iframeRefs = useRef(new Map<number, HTMLIFrameElement>())
   const saveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
@@ -61,6 +64,7 @@ function App(): React.JSX.Element {
   const codePanelOpenRef = useRef<Record<number, boolean>>({})
   const codeTextRef = useRef<Record<number, string>>({})
   const codeTextareaRefs = useRef(new Map<number, HTMLTextAreaElement>())
+  const applyingInstructionRef = useRef(new Set<number>())
 
   useEffect(() => {
     cardsRef.current = cards
@@ -194,10 +198,6 @@ function App(): React.JSX.Element {
       saveTimers.current.delete(card.index)
     }
 
-    // Close the code panel too — its content reflects the pre-regeneration HTML, and
-    // leaving it open would let the next code edit overwrite the regenerated file with stale text.
-    setCodePanelOpen((previous) => ({ ...previous, [card.index]: false }))
-
     setCards((previous) =>
       previous.map((item) => (item.index === card.index ? { ...item, regenerating: true } : item))
     )
@@ -212,6 +212,15 @@ function App(): React.JSX.Element {
 
       if (result.ok) {
         const updated = result.data.card
+        // Close the code panel and drop any AI-edit undo snapshot only once regeneration
+        // actually succeeded — a failed attempt leaves card.html untouched, so both are
+        // still valid and shouldn't be thrown away.
+        setCodePanelOpen((previous) => ({ ...previous, [card.index]: false }))
+        setPreviousHtml((previous) => {
+          const next = { ...previous }
+          delete next[card.index]
+          return next
+        })
         setCards((previous) =>
           previous.map((item) =>
             item.index === card.index
@@ -389,6 +398,100 @@ function App(): React.JSX.Element {
     textarea.scrollTop = linesBeforeStart * lineHeight
   }
 
+  async function handleApplyInstruction(card: CardState): Promise<void> {
+    const instruction = instructionText[card.index]?.trim()
+    if (!instruction || !card.htmlPath) return
+    // Synchronous re-entrancy guard — the button's `disabled` prop only takes effect after
+    // React re-renders, so a rapid double-click could otherwise fire two concurrent requests.
+    if (applyingInstructionRef.current.has(card.index)) return
+    applyingInstructionRef.current.add(card.index)
+
+    const doc = iframeRefs.current.get(card.index)?.contentDocument
+    const currentHtml = doc ? serializeCardDocument(doc) : card.html
+    if (!currentHtml) {
+      applyingInstructionRef.current.delete(card.index)
+      return
+    }
+
+    // Cancel any pending inline/code-panel debounced save — otherwise it could fire after
+    // this AI edit completes and overwrite the freshly edited file with the pre-edit content.
+    const pendingTimer = saveTimers.current.get(card.index)
+    if (pendingTimer) {
+      clearTimeout(pendingTimer)
+      saveTimers.current.delete(card.index)
+    }
+
+    setApplyingInstruction((previous) => ({ ...previous, [card.index]: true }))
+    setCardsMessage(null)
+
+    try {
+      const result = await window.api.editCardWithInstruction({
+        htmlPath: card.htmlPath,
+        html: currentHtml,
+        instruction
+      })
+
+      if (result.ok) {
+        const newHtml = result.data.html
+        setPreviousHtml((previous) => ({ ...previous, [card.index]: currentHtml }))
+        setCards((previous) =>
+          previous.map((item) => (item.index === card.index ? { ...item, html: newHtml } : item))
+        )
+        if (codePanelOpenRef.current[card.index]) {
+          setCodeText((previous) => ({ ...previous, [card.index]: newHtml }))
+        }
+        setInstructionText((previous) => ({ ...previous, [card.index]: '' }))
+      } else {
+        setCardsMessage({ type: 'error', text: result.error.message })
+      }
+    } catch {
+      setCardsMessage({ type: 'error', text: 'AI 편집 중 알 수 없는 오류가 발생했습니다' })
+    } finally {
+      setApplyingInstruction((previous) => ({ ...previous, [card.index]: false }))
+      applyingInstructionRef.current.delete(card.index)
+    }
+  }
+
+  async function handleRevertInstruction(card: CardState): Promise<void> {
+    const restoredHtml = previousHtml[card.index]
+    if (!restoredHtml || !card.htmlPath) return
+
+    setCards((previous) =>
+      previous.map((item) => (item.index === card.index ? { ...item, html: restoredHtml } : item))
+    )
+    if (codePanelOpenRef.current[card.index]) {
+      setCodeText((previous) => ({ ...previous, [card.index]: restoredHtml }))
+    }
+
+    try {
+      const result = await window.api.saveCardHtml({ htmlPath: card.htmlPath, html: restoredHtml })
+      if (result.ok) {
+        // Only drop the snapshot once the revert is actually persisted — if the save failed,
+        // keep it so the user can retry instead of losing recoverability silently.
+        setPreviousHtml((previous) => {
+          const next = { ...previous }
+          delete next[card.index]
+          return next
+        })
+      }
+      setCards((previous) =>
+        previous.map((item) =>
+          item.index === card.index
+            ? { ...item, saveError: result.ok ? undefined : result.error.message }
+            : item
+        )
+      )
+    } catch {
+      setCards((previous) =>
+        previous.map((item) =>
+          item.index === card.index
+            ? { ...item, saveError: '카드 저장 중 알 수 없는 오류가 발생했습니다' }
+            : item
+        )
+      )
+    }
+  }
+
   return (
     <div className="app-root">
       <form className="api-key-form" onSubmit={handleSaveApiKey}>
@@ -533,10 +636,47 @@ function App(): React.JSX.Element {
                   />
                 )}
 
+                {!card.error && (
+                  <div className="card-instruction-row">
+                    <input
+                      type="text"
+                      placeholder="예: 이 카드 색상을 파란색으로 바꿔줘"
+                      value={instructionText[card.index] ?? ''}
+                      onChange={(event) =>
+                        setInstructionText((previous) => ({
+                          ...previous,
+                          [card.index]: event.target.value
+                        }))
+                      }
+                      disabled={applyingInstruction[card.index] || card.regenerating}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleApplyInstruction(card)}
+                      disabled={
+                        applyingInstruction[card.index] ||
+                        card.regenerating ||
+                        !instructionText[card.index]?.trim()
+                      }
+                    >
+                      {applyingInstruction[card.index] ? '적용 중...' : '적용'}
+                    </button>
+                    {previousHtml[card.index] !== undefined && (
+                      <button
+                        type="button"
+                        onClick={() => handleRevertInstruction(card)}
+                        disabled={applyingInstruction[card.index] || card.regenerating}
+                      >
+                        되돌리기
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={() => handleRegenerateCard(card)}
-                  disabled={card.regenerating}
+                  disabled={card.regenerating || applyingInstruction[card.index]}
                 >
                   재생성
                 </button>

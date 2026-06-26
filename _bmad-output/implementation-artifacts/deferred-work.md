@@ -21,3 +21,11 @@
 ## Deferred from: code review of 1-5-code-panel-sync (2026-06-26)
 
 - `findElementRange`의 `full.includes(marker)` 매칭이, 사용자가 코드창에서 직접 편집해 다른 속성값 안에 우연히 `data-edit-id="X"` 리터럴 문자열이 들어가는 극단적 경우 잘못된 여는 태그를 찾을 수 있음 — 속성명까지 구분하는 파싱이 필요해 비용 대비 위험이 낮음(사용자가 의도적으로 그런 텍스트를 attrs에 넣는 경우만 발생).
+
+## Deferred from: code review of 1-6-ai-instruction-editing (2026-06-26)
+
+- `validateCardSkeleton`의 CSS 변수 선언 검사가 단순 문자열/정규식 매칭이라 `:root`/`<style>` 블록 밖(주석, 본문 텍스트 등)에 변수명이 등장해도 통과시킬 수 있음 — 실제 CSS 파싱이 필요해 비용 대비 위험 낮음(현재 시스템 프롬프트가 그런 응답을 유도할 가능성 낮음).
+- `editCardHtml` 응답에 마크다운 코드블록(```)이 섞여도 별도로 제거하지 않음 — 1.3의 `generateCardHtml`도 동일한 위험을 시스템 프롬프트로만 방지하는 기존 패턴과 일관됨, 새 회귀 아님.
+- `validateCardSkeleton`의 불릿 탐색/gap 스캔 루프에 명시적 상한이 있지만, 입력 HTML 자체 크기에 대한 상한은 없음 — Claude 응답이 `max_tokens`(8192)로 이미 사실상 제한되어 실사용 위험 낮음.
+- 재생성/AI편집/되돌리기 사이에 완전한 동시성 가드(세대/epoch 토큰)는 없음 — UI 버튼 비활성화로 일반적인 사용자 트리거 경쟁은 막았지만, 프로그래밍적으로 동시에 두 작업을 발생시키는 극단적 케이스까지는 막지 않음. 풀가드는 설계 변경 규모라 범위 초과.
+- `countDataEditId`가 `editId` 문자열을 정규식에 그대로 보간해 메타문자를 escape하지 않음 — 현재 호출부는 전부 고정 리터럴 패턴만 전달해 실질 위험 없음, 향후 신뢰되지 않은 입력에 노출될 경우 재검토.

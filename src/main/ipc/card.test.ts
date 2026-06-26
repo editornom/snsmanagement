@@ -22,7 +22,8 @@ vi.mock('../settings/apiKey', () => ({
 
 vi.mock('../api/claude', () => ({
   createClaudeClient: vi.fn(() => ({})),
-  generateCardHtml: vi.fn()
+  generateCardHtml: vi.fn(),
+  editCardHtml: vi.fn()
 }))
 
 vi.mock('../storage/card', () => ({
@@ -32,19 +33,43 @@ vi.mock('../storage/card', () => ({
 
 import { dialog } from 'electron'
 import {
+  CARD_EDIT_WITH_INSTRUCTION_CHANNEL,
   CARD_GENERATE_CHANNEL,
   CARD_REGENERATE_CHANNEL,
   CARD_SAVE_HTML_CHANNEL,
   CARD_SELECT_REFERENCE_IMAGES_CHANNEL
 } from '../../shared/ipc-card'
+import { editCardHtml } from '../api/claude'
 import { getApiKey } from '../settings/apiKey'
 import { generateCard, overwriteCardHtmlFile } from '../storage/card'
 import { registerCardIpcHandlers } from './card'
 
+const VALID_CARD_HTML = `<!DOCTYPE html>
+<html>
+<head>
+<style>
+  :root {
+    --card-bg-color: #111111;
+    --card-primary-color: #222222;
+    --card-text-color: #ffffff;
+    --card-accent-color: #00ff00;
+  }
+</style>
+</head>
+<body>
+  <div data-edit-id="title-bar"><div class="title-text">Title</div></div>
+  <div data-edit-id="bullet-1">
+    <div data-edit-id="icon-1"><svg></svg></div>
+    <div class="bullet-title">Bullet</div>
+  </div>
+  <div data-edit-id="footer"><div class="footer-label">footer</div></div>
+</body>
+</html>`
+
 describe('card IPC handlers', () => {
   beforeEach(() => {
     handlers.clear()
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     registerCardIpcHandlers()
   })
 
@@ -251,5 +276,84 @@ describe('card IPC handlers', () => {
 
     expect(result.ok).toBe(false)
     expect(result.error?.message).toBe('disk full')
+  })
+
+  it('applies an AI instruction edit that passes skeleton validation and saves it', async () => {
+    vi.mocked(getApiKey).mockReturnValue('sk-test')
+    vi.mocked(editCardHtml).mockResolvedValue(VALID_CARD_HTML)
+
+    const handler = handlers.get(CARD_EDIT_WITH_INSTRUCTION_CHANNEL)!
+    const result = (await handler(null, {
+      htmlPath: '/content/html/260101_haion_01.html',
+      html: '<html>old</html>',
+      instruction: '색상을 파란색으로 바꿔줘'
+    })) as { ok: boolean; data?: { html: string } }
+
+    expect(result.ok).toBe(true)
+    expect(result.data?.html).toBe(VALID_CARD_HTML)
+    expect(overwriteCardHtmlFile).toHaveBeenCalledWith(
+      '/content/html/260101_haion_01.html',
+      VALID_CARD_HTML
+    )
+  })
+
+  it('rejects an AI instruction edit that violates the card skeleton contract', async () => {
+    vi.mocked(getApiKey).mockReturnValue('sk-test')
+    const brokenHtml = VALID_CARD_HTML.replace('data-edit-id="footer"', 'data-edit-id="oops"')
+    vi.mocked(editCardHtml).mockResolvedValue(brokenHtml)
+
+    const handler = handlers.get(CARD_EDIT_WITH_INSTRUCTION_CHANNEL)!
+    const result = (await handler(null, {
+      htmlPath: '/content/html/260101_haion_01.html',
+      html: '<html>old</html>',
+      instruction: '푸터를 지워줘'
+    })) as { ok: boolean; error?: { message: string } }
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toContain('footer')
+    expect(overwriteCardHtmlFile).not.toHaveBeenCalled()
+  })
+
+  it('returns an error when no API key is configured for AI instruction editing', async () => {
+    vi.mocked(getApiKey).mockReturnValue(null)
+
+    const handler = handlers.get(CARD_EDIT_WITH_INSTRUCTION_CHANNEL)!
+    const result = (await handler(null, {
+      htmlPath: '/content/html/260101_haion_01.html',
+      html: '<html>old</html>',
+      instruction: '색상을 바꿔줘'
+    })) as { ok: boolean; error?: { message: string } }
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toBe('Claude API 키를 먼저 설정해주세요')
+    expect(editCardHtml).not.toHaveBeenCalled()
+  })
+
+  it('returns an error when instruction edit request is missing required fields', async () => {
+    const handler = handlers.get(CARD_EDIT_WITH_INSTRUCTION_CHANNEL)!
+    const result = (await handler(null, {
+      htmlPath: '/content/html/260101_haion_01.html',
+      html: '<html>old</html>',
+      instruction: ''
+    })) as { ok: boolean; error?: { message: string } }
+
+    expect(result.ok).toBe(false)
+    expect(editCardHtml).not.toHaveBeenCalled()
+  })
+
+  it('returns an error when the Claude API call fails during instruction editing', async () => {
+    vi.mocked(getApiKey).mockReturnValue('sk-test')
+    vi.mocked(editCardHtml).mockRejectedValue(new Error('rate limit exceeded'))
+
+    const handler = handlers.get(CARD_EDIT_WITH_INSTRUCTION_CHANNEL)!
+    const result = (await handler(null, {
+      htmlPath: '/content/html/260101_haion_01.html',
+      html: '<html>old</html>',
+      instruction: '색상을 바꿔줘'
+    })) as { ok: boolean; error?: { message: string } }
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toBe('rate limit exceeded')
+    expect(overwriteCardHtmlFile).not.toHaveBeenCalled()
   })
 })

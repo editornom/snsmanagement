@@ -1,11 +1,6 @@
-export const CARD_CSS_VARIABLES = [
-  '--card-bg-color',
-  '--card-primary-color',
-  '--card-text-color',
-  '--card-accent-color'
-] as const
+import { CARD_CSS_VARIABLES, type CardCssVariable } from '../../shared/cardSkeleton'
 
-export type CardCssVariable = (typeof CARD_CSS_VARIABLES)[number]
+export { CARD_CSS_VARIABLES, type CardCssVariable }
 
 function isLeafTextElement(element: Element): boolean {
   const hasElementChild = Array.from(element.childNodes).some(
