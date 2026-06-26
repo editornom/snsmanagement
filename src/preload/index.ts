@@ -40,6 +40,11 @@ import {
   type CaptureFramesRequest,
   type CaptureFramesResponseData
 } from '../shared/ipc-frame'
+import {
+  VIDEO_ASSEMBLE_CHANNEL,
+  type AssembleVideoRequest,
+  type AssembleVideoResponseData
+} from '../shared/ipc-video'
 
 // Custom APIs for renderer
 const api = {
@@ -72,7 +77,9 @@ const api = {
   captureCardFrames: (
     request: CaptureFramesRequest
   ): Promise<IpcResult<CaptureFramesResponseData>> =>
-    ipcRenderer.invoke(FRAME_CAPTURE_CHANNEL, request)
+    ipcRenderer.invoke(FRAME_CAPTURE_CHANNEL, request),
+  assembleVideo: (request: AssembleVideoRequest): Promise<IpcResult<AssembleVideoResponseData>> =>
+    ipcRenderer.invoke(VIDEO_ASSEMBLE_CHANNEL, request)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

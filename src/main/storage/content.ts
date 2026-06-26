@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { extname, join } from 'path'
 import { getContentFolderPath } from './naming'
 
@@ -45,4 +45,12 @@ export function registerContent(input: RegisterContentInput): { folderPath: stri
   writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf-8')
 
   return { folderPath }
+}
+
+export function findThumbnailPath(contentFolderPath: string): string {
+  const match = readdirSync(contentFolderPath).find((fileName) => fileName.startsWith('thumbnail.'))
+  if (!match) {
+    throw new Error(`썸네일 파일을 찾을 수 없습니다: ${contentFolderPath}`)
+  }
+  return join(contentFolderPath, match)
 }

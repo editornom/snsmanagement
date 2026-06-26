@@ -1,8 +1,8 @@
-import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'fs'
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { registerContent, type ContentMeta } from './content'
+import { findThumbnailPath, registerContent, type ContentMeta } from './content'
 import { getContentFolderPath } from './naming'
 
 describe('registerContent', () => {
@@ -73,5 +73,30 @@ describe('registerContent', () => {
     expect(meta.homepageUrl).toBe('https://haion.net')
     expect(meta.createdAt).toBe(firstRun.toISOString())
     expect(meta.updatedAt).toBe(secondRun.toISOString())
+  })
+})
+
+describe('findThumbnailPath', () => {
+  let folderPath: string
+
+  beforeEach(() => {
+    folderPath = mkdtempSync(join(tmpdir(), 'sns-content-test-'))
+  })
+
+  it('finds a thumbnail file regardless of its extension', () => {
+    writeFileSync(join(folderPath, 'thumbnail.png'), 'fake-png-bytes')
+    expect(findThumbnailPath(folderPath)).toBe(join(folderPath, 'thumbnail.png'))
+  })
+
+  it('ignores unrelated files in the folder', () => {
+    mkdirSync(join(folderPath, 'html'))
+    writeFileSync(join(folderPath, 'meta.json'), '{}')
+    writeFileSync(join(folderPath, 'thumbnail.jpg'), 'fake-jpg-bytes')
+    expect(findThumbnailPath(folderPath)).toBe(join(folderPath, 'thumbnail.jpg'))
+  })
+
+  it('throws when no thumbnail file exists', () => {
+    writeFileSync(join(folderPath, 'meta.json'), '{}')
+    expect(() => findThumbnailPath(folderPath)).toThrow()
   })
 })

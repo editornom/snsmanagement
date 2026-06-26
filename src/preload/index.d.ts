@@ -22,6 +22,7 @@ import type {
 } from '../shared/ipc-settings'
 import type { RenderCardsRequest, RenderCardsResponseData } from '../shared/ipc-image'
 import type { CaptureFramesRequest, CaptureFramesResponseData } from '../shared/ipc-frame'
+import type { AssembleVideoRequest, AssembleVideoResponseData } from '../shared/ipc-video'
 
 export interface Api {
   selectThumbnail: () => Promise<string | null>
@@ -41,6 +42,7 @@ export interface Api {
   captureCardFrames: (
     request: CaptureFramesRequest
   ) => Promise<IpcResult<CaptureFramesResponseData>>
+  assembleVideo: (request: AssembleVideoRequest) => Promise<IpcResult<AssembleVideoResponseData>>
 }
 
 declare global {

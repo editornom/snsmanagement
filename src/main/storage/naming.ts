@@ -1,4 +1,4 @@
-import { join } from 'path'
+import { basename, join } from 'path'
 
 const OUTPUT_APP_FOLDER = 'SNS콘텐츠제작도구'
 const INVALID_WINDOWS_PATH_CHARS = /[<>:"/\\|?*]/g
@@ -29,6 +29,15 @@ export function getCardImagePathFromHtmlPath(htmlPath: string): string {
   }
   const [, prefix, separator, fileNameWithoutExt] = match
   return `${prefix}${separator}image${separator}${fileNameWithoutExt}.png`
+}
+
+export function getMusicFolderPath(documentsPath: string): string {
+  return join(documentsPath, OUTPUT_APP_FOLDER, 'music')
+}
+
+export function getVideoPath(contentFolderPath: string, keyword: string): string {
+  const date = basename(contentFolderPath)
+  return join(contentFolderPath, 'video', `${date}_${sanitizeKeyword(keyword)}.mp4`)
 }
 
 export function getCardHtmlPath(

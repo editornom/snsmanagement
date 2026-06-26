@@ -59,6 +59,8 @@ function App(): React.JSX.Element {
   const [applyingInstruction, setApplyingInstruction] = useState<Record<number, boolean>>({})
   const [renderingImages, setRenderingImages] = useState(false)
   const [imageRenderResults, setImageRenderResults] = useState<Record<number, FormMessage>>({})
+  const [assemblingVideo, setAssemblingVideo] = useState(false)
+  const [assembleVideoMessage, setAssembleVideoMessage] = useState<FormMessage | null>(null)
 
   const iframeRefs = useRef(new Map<number, HTMLIFrameElement>())
   const saveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
@@ -546,6 +548,70 @@ function App(): React.JSX.Element {
     }
   }
 
+  async function handleAssembleVideo(): Promise<void> {
+    const readyCards = cardsRef.current.filter((item) => item.htmlPath)
+    if (readyCards.length === 0) return
+
+    // handleRenderImages와 동일한 이유로, 라이브 DOM을 읽기 전에 보류 중인 디바운스 저장을 취소한다.
+    for (const item of readyCards) {
+      const pendingTimer = saveTimers.current.get(item.index)
+      if (pendingTimer) {
+        clearTimeout(pendingTimer)
+        saveTimers.current.delete(item.index)
+      }
+    }
+
+    setAssemblingVideo(true)
+    setAssembleVideoMessage(null)
+
+    try {
+      const frameResult = await window.api.captureCardFrames({
+        cards: readyCards.map((item) => {
+          const doc = iframeRefs.current.get(item.index)?.contentDocument
+          const html = doc ? serializeCardDocument(doc) : (item.html as string)
+          return { index: item.index, html }
+        })
+      })
+
+      if (!frameResult.ok) {
+        setAssembleVideoMessage({ type: 'error', text: frameResult.error.message })
+        return
+      }
+
+      const failedFrames = frameResult.data.results.filter((item) => item.status === 'failure')
+      const successfulFrames = frameResult.data.results.filter((item) => item.status === 'success')
+
+      if (successfulFrames.length === 0) {
+        setAssembleVideoMessage({ type: 'error', text: '프레임캡처에 성공한 카드가 없습니다' })
+        return
+      }
+
+      const videoResult = await window.api.assembleVideo({
+        contentFolderPath: folderPath,
+        keyword,
+        cards: successfulFrames.map((item) => ({ index: item.index, frameDir: item.frameDir }))
+      })
+
+      if (videoResult.ok) {
+        const skippedNote =
+          failedFrames.length > 0 ? ` (프레임캡처 실패로 카드 ${failedFrames.length}장 제외)` : ''
+        setAssembleVideoMessage({
+          type: 'success',
+          text: `영상 생성 완료: ${videoResult.data.videoPath}${skippedNote}`
+        })
+      } else {
+        setAssembleVideoMessage({ type: 'error', text: videoResult.error.message })
+      }
+    } catch {
+      setAssembleVideoMessage({
+        type: 'error',
+        text: '영상 생성 중 알 수 없는 오류가 발생했습니다'
+      })
+    } finally {
+      setAssemblingVideo(false)
+    }
+  }
+
   return (
     <div className="app-root">
       <form className="api-key-form" onSubmit={handleSaveApiKey}>
@@ -637,6 +703,18 @@ function App(): React.JSX.Element {
             <button type="button" onClick={handleRenderImages} disabled={renderingImages}>
               {renderingImages ? '이미지 렌더링 중...' : '이미지로 렌더링'}
             </button>
+          )}
+
+          {cards.some((card) => card.htmlPath) && (
+            <button type="button" onClick={handleAssembleVideo} disabled={assemblingVideo}>
+              {assemblingVideo ? '영상 만드는 중...' : '영상 만들기'}
+            </button>
+          )}
+
+          {assembleVideoMessage && (
+            <div className={`message ${assembleVideoMessage.type}`}>
+              {assembleVideoMessage.text}
+            </div>
           )}
 
           <div className="card-list">

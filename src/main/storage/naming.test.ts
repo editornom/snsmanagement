@@ -4,7 +4,9 @@ import {
   getCardHtmlPath,
   getCardImagePathFromHtmlPath,
   getContentFolderPath,
+  getMusicFolderPath,
   getOutputRoot,
+  getVideoPath,
   sanitizeKeyword
 } from './naming'
 
@@ -70,6 +72,37 @@ describe('getCardHtmlPath', () => {
   it('sanitizes the keyword used in the file name', () => {
     const result = getCardHtmlPath('C:\\content', 'haion<>망분리', new Date(2026, 5, 25), 3)
     expect(result).toBe('C:\\content\\html\\260625_haion망분리_03.html')
+  })
+})
+
+describe('getMusicFolderPath', () => {
+  it('joins documents path with the fixed app folder and music segment', () => {
+    expect(getMusicFolderPath('C:\\Users\\junghoo\\Documents')).toBe(
+      'C:\\Users\\junghoo\\Documents\\SNS콘텐츠제작도구\\music'
+    )
+  })
+})
+
+describe('getVideoPath', () => {
+  it('builds {contentFolderPath}/video/{date}_{keyword}.mp4 reusing the folder name as the date', () => {
+    const result = getVideoPath(
+      'C:\\Users\\junghoo\\Documents\\SNS콘텐츠제작도구\\output\\haion망분리\\260625',
+      'haion망분리'
+    )
+    expect(result).toBe(
+      'C:\\Users\\junghoo\\Documents\\SNS콘텐츠제작도구\\output\\haion망분리\\260625\\video\\260625_haion망분리.mp4'
+    )
+  })
+
+  it('reuses the date embedded in the folder name rather than recomputing today’s date', () => {
+    // contentFolderPath날짜(260101)는 "오늘"이 아니더라도 그대로 재사용돼야 한다.
+    const result = getVideoPath('C:\\content\\haion\\260101', 'haion')
+    expect(result).toBe('C:\\content\\haion\\260101\\video\\260101_haion.mp4')
+  })
+
+  it('sanitizes the keyword used in the file name', () => {
+    const result = getVideoPath('C:\\content\\haion망분리\\260625', 'haion<>망분리')
+    expect(result).toBe('C:\\content\\haion망분리\\260625\\video\\260625_haion망분리.mp4')
   })
 })
 
