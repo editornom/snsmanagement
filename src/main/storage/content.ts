@@ -47,6 +47,14 @@ export function registerContent(input: RegisterContentInput): { folderPath: stri
   return { folderPath }
 }
 
+export function readContentMeta(contentFolderPath: string): ContentMeta {
+  const metaPath = join(contentFolderPath, 'meta.json')
+  if (!existsSync(metaPath)) {
+    throw new Error(`메타데이터를 찾을 수 없습니다: ${contentFolderPath}`)
+  }
+  return JSON.parse(readFileSync(metaPath, 'utf-8')) as ContentMeta
+}
+
 export function findThumbnailPath(contentFolderPath: string): string {
   const match = readdirSync(contentFolderPath).find((fileName) => fileName.startsWith('thumbnail.'))
   if (!match) {

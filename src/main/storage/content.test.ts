@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { findThumbnailPath, registerContent, type ContentMeta } from './content'
+import { findThumbnailPath, readContentMeta, registerContent, type ContentMeta } from './content'
 import { getContentFolderPath } from './naming'
 
 describe('registerContent', () => {
@@ -73,6 +73,37 @@ describe('registerContent', () => {
     expect(meta.homepageUrl).toBe('https://haion.net')
     expect(meta.createdAt).toBe(firstRun.toISOString())
     expect(meta.updatedAt).toBe(secondRun.toISOString())
+  })
+})
+
+describe('readContentMeta', () => {
+  let documentsPath: string
+  let thumbnailPath: string
+
+  beforeEach(() => {
+    documentsPath = mkdtempSync(join(tmpdir(), 'sns-content-test-'))
+    thumbnailPath = join(documentsPath, 'source-thumbnail.png')
+    writeFileSync(thumbnailPath, 'fake-png-bytes')
+  })
+
+  it('reads back the meta.json written by registerContent', () => {
+    const { folderPath } = registerContent({
+      documentsPath,
+      keyword: 'haion망분리',
+      title: '제목',
+      homepageUrl: 'https://haion.net',
+      thumbnailPath,
+      now: new Date(2026, 5, 25)
+    })
+
+    const meta = readContentMeta(folderPath)
+    expect(meta.keyword).toBe('haion망분리')
+    expect(meta.homepageUrl).toBe('https://haion.net')
+  })
+
+  it('throws when meta.json does not exist', () => {
+    const emptyFolder = mkdtempSync(join(tmpdir(), 'sns-content-test-'))
+    expect(() => readContentMeta(emptyFolder)).toThrow()
   })
 })
 

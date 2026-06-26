@@ -45,6 +45,11 @@ import {
   type AssembleVideoRequest,
   type AssembleVideoResponseData
 } from '../shared/ipc-video'
+import {
+  MANUSCRIPT_GENERATE_CHANNEL,
+  type GenerateManuscriptRequest,
+  type GenerateManuscriptResponseData
+} from '../shared/ipc-manuscript'
 
 // Custom APIs for renderer
 const api = {
@@ -79,7 +84,11 @@ const api = {
   ): Promise<IpcResult<CaptureFramesResponseData>> =>
     ipcRenderer.invoke(FRAME_CAPTURE_CHANNEL, request),
   assembleVideo: (request: AssembleVideoRequest): Promise<IpcResult<AssembleVideoResponseData>> =>
-    ipcRenderer.invoke(VIDEO_ASSEMBLE_CHANNEL, request)
+    ipcRenderer.invoke(VIDEO_ASSEMBLE_CHANNEL, request),
+  generateManuscript: (
+    request: GenerateManuscriptRequest
+  ): Promise<IpcResult<GenerateManuscriptResponseData>> =>
+    ipcRenderer.invoke(MANUSCRIPT_GENERATE_CHANNEL, request)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

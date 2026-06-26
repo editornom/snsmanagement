@@ -4,6 +4,7 @@ import {
   getCardHtmlPath,
   getCardImagePathFromHtmlPath,
   getContentFolderPath,
+  getManuscriptPath,
   getMusicFolderPath,
   getOutputRoot,
   getVideoPath,
@@ -103,6 +104,18 @@ describe('getVideoPath', () => {
   it('sanitizes the keyword used in the file name', () => {
     const result = getVideoPath('C:\\content\\haion망분리\\260625', 'haion<>망분리')
     expect(result).toBe('C:\\content\\haion망분리\\260625\\video\\260625_haion망분리.mp4')
+  })
+})
+
+describe('getManuscriptPath', () => {
+  it('joins the content folder path with the fixed manuscript file name', () => {
+    expect(
+      getManuscriptPath(
+        'C:\\Users\\junghoo\\Documents\\SNS콘텐츠제작도구\\output\\haion망분리\\260625'
+      )
+    ).toBe(
+      'C:\\Users\\junghoo\\Documents\\SNS콘텐츠제작도구\\output\\haion망분리\\260625\\원고.txt'
+    )
   })
 })
 

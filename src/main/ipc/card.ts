@@ -1,4 +1,4 @@
-import { app, dialog, ipcMain, safeStorage } from 'electron'
+import { dialog, ipcMain } from 'electron'
 import {
   CARD_EDIT_WITH_INSTRUCTION_CHANNEL,
   CARD_GENERATE_CHANNEL,
@@ -18,9 +18,9 @@ import {
 } from '../../shared/ipc-card'
 import type { IpcResult } from '../../shared/ipc-content'
 import { validateCardSkeleton } from '../../shared/cardSkeleton'
-import { createClaudeClient, editCardHtml, generateCardHtml } from '../api/claude'
-import { getApiKey } from '../settings/apiKey'
+import { editCardHtml, generateCardHtml } from '../api/claude'
 import { generateCard, overwriteCardHtmlFile } from '../storage/card'
+import { requireClaudeClient } from './requireClaudeClient'
 
 const MAX_REFERENCE_IMAGES = 10
 const API_KEY_MISSING_MESSAGE = 'Claude API 키를 먼저 설정해주세요'
@@ -58,12 +58,10 @@ export function registerCardIpcHandlers(): void {
         return { ok: false, error: { message: NO_REFERENCE_IMAGES_MESSAGE } }
       }
 
-      const apiKey = getApiKey(app.getPath('userData'), safeStorage)
-      if (!apiKey) {
+      const client = requireClaudeClient()
+      if (!client) {
         return { ok: false, error: { message: API_KEY_MISSING_MESSAGE } }
       }
-
-      const client = createClaudeClient(apiKey)
       const referenceImagePaths = request.referenceImagePaths.slice(0, MAX_REFERENCE_IMAGES)
       const cards: CardResult[] = []
 
@@ -103,12 +101,10 @@ export function registerCardIpcHandlers(): void {
         return { ok: false, error: { message: MISSING_FOLDER_OR_KEYWORD_MESSAGE } }
       }
 
-      const apiKey = getApiKey(app.getPath('userData'), safeStorage)
-      if (!apiKey) {
+      const client = requireClaudeClient()
+      if (!client) {
         return { ok: false, error: { message: API_KEY_MISSING_MESSAGE } }
       }
-
-      const client = createClaudeClient(apiKey)
 
       try {
         const { htmlPath, html } = await generateCard({
@@ -161,12 +157,10 @@ export function registerCardIpcHandlers(): void {
         return { ok: false, error: { message: MISSING_EDIT_FIELDS_MESSAGE } }
       }
 
-      const apiKey = getApiKey(app.getPath('userData'), safeStorage)
-      if (!apiKey) {
+      const client = requireClaudeClient()
+      if (!client) {
         return { ok: false, error: { message: API_KEY_MISSING_MESSAGE } }
       }
-
-      const client = createClaudeClient(apiKey)
 
       try {
         const editedHtml = await editCardHtml(client, request.html, request.instruction)

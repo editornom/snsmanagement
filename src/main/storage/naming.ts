@@ -40,6 +40,10 @@ export function getVideoPath(contentFolderPath: string, keyword: string): string
   return join(contentFolderPath, 'video', `${date}_${sanitizeKeyword(keyword)}.mp4`)
 }
 
+export function getManuscriptPath(contentFolderPath: string): string {
+  return join(contentFolderPath, '원고.txt')
+}
+
 export function getCardHtmlPath(
   contentFolderPath: string,
   keyword: string,

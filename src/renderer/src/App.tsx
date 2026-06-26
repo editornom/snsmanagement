@@ -61,6 +61,9 @@ function App(): React.JSX.Element {
   const [imageRenderResults, setImageRenderResults] = useState<Record<number, FormMessage>>({})
   const [assemblingVideo, setAssemblingVideo] = useState(false)
   const [assembleVideoMessage, setAssembleVideoMessage] = useState<FormMessage | null>(null)
+  const [generatingManuscript, setGeneratingManuscript] = useState(false)
+  const [manuscriptMessage, setManuscriptMessage] = useState<FormMessage | null>(null)
+  const [manuscript, setManuscript] = useState('')
 
   const iframeRefs = useRef(new Map<number, HTMLIFrameElement>())
   const saveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
@@ -496,19 +499,23 @@ function App(): React.JSX.Element {
     }
   }
 
-  async function handleRenderImages(): Promise<void> {
-    const renderableCards = cardsRef.current.filter((item) => item.htmlPath)
-    if (renderableCards.length === 0) return
-
-    // Cancel pending debounced inline/code-panel saves first — otherwise one could fire after
-    // the live DOM is read below and redundantly re-save the same content mid-render.
-    for (const item of renderableCards) {
+  // 라이브 DOM을 읽기 전에 보류 중인 인라인/코드창 디바운스 저장을 취소한다 — 그러지 않으면
+  // 저장 타이머가 나중에 발동해 같은 내용을 중복으로 다시 저장할 수 있다.
+  function cancelPendingSaveTimers(cards: CardState[]): void {
+    for (const item of cards) {
       const pendingTimer = saveTimers.current.get(item.index)
       if (pendingTimer) {
         clearTimeout(pendingTimer)
         saveTimers.current.delete(item.index)
       }
     }
+  }
+
+  async function handleRenderImages(): Promise<void> {
+    const renderableCards = cardsRef.current.filter((item) => item.htmlPath)
+    if (renderableCards.length === 0) return
+
+    cancelPendingSaveTimers(renderableCards)
 
     setRenderingImages(true)
     setCardsMessage(null)
@@ -552,14 +559,7 @@ function App(): React.JSX.Element {
     const readyCards = cardsRef.current.filter((item) => item.htmlPath)
     if (readyCards.length === 0) return
 
-    // handleRenderImages와 동일한 이유로, 라이브 DOM을 읽기 전에 보류 중인 디바운스 저장을 취소한다.
-    for (const item of readyCards) {
-      const pendingTimer = saveTimers.current.get(item.index)
-      if (pendingTimer) {
-        clearTimeout(pendingTimer)
-        saveTimers.current.delete(item.index)
-      }
-    }
+    cancelPendingSaveTimers(readyCards)
 
     setAssemblingVideo(true)
     setAssembleVideoMessage(null)
@@ -609,6 +609,44 @@ function App(): React.JSX.Element {
       })
     } finally {
       setAssemblingVideo(false)
+    }
+  }
+
+  async function handleGenerateManuscript(): Promise<void> {
+    const readyCards = cardsRef.current.filter((item) => item.htmlPath)
+    if (readyCards.length === 0) return
+
+    cancelPendingSaveTimers(readyCards)
+
+    setGeneratingManuscript(true)
+    setManuscriptMessage(null)
+
+    try {
+      const result = await window.api.generateManuscript({
+        contentFolderPath: folderPath,
+        cards: readyCards.map((item) => {
+          const doc = iframeRefs.current.get(item.index)?.contentDocument
+          const html = doc ? serializeCardDocument(doc) : (item.html as string)
+          return { index: item.index, htmlPath: item.htmlPath as string, html }
+        })
+      })
+
+      if (result.ok) {
+        setManuscript(result.data.manuscript)
+        const missingUrlNote = result.data.homepageUrlMissing
+          ? ' (홈페이지 URL이 비어있어 빈칸으로 저장되었습니다)'
+          : ''
+        setManuscriptMessage({
+          type: 'success',
+          text: `원고 생성 완료: ${result.data.manuscriptPath}${missingUrlNote}`
+        })
+      } else {
+        setManuscriptMessage({ type: 'error', text: result.error.message })
+      }
+    } catch {
+      setManuscriptMessage({ type: 'error', text: '원고 생성 중 알 수 없는 오류가 발생했습니다' })
+    } finally {
+      setGeneratingManuscript(false)
     }
   }
 
@@ -716,6 +754,28 @@ function App(): React.JSX.Element {
               {assembleVideoMessage.text}
             </div>
           )}
+
+          {cards.some((card) => card.htmlPath) && (
+            <>
+              <button
+                type="button"
+                onClick={handleGenerateManuscript}
+                disabled={generatingManuscript}
+              >
+                {generatingManuscript ? '원고 생성 중...' : '원고 생성'}
+              </button>
+              <p className="manuscript-hint">
+                원고는 마지막으로 &ldquo;이미지로 렌더링&rdquo;한 이미지를 기준으로 생성됩니다.
+                카드를 수정한 뒤에는 원고 생성 전에 이미지를 다시 렌더링하세요.
+              </p>
+            </>
+          )}
+
+          {manuscriptMessage && (
+            <div className={`message ${manuscriptMessage.type}`}>{manuscriptMessage.text}</div>
+          )}
+
+          {manuscript && <textarea className="manuscript-output" readOnly value={manuscript} />}
 
           <div className="card-list">
             {cards.map((card) => (

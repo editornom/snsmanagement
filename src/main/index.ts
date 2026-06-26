@@ -7,6 +7,7 @@ import { registerCardIpcHandlers } from './ipc/card'
 import { registerImageIpcHandlers } from './ipc/image'
 import { registerFrameIpcHandlers } from './ipc/frame'
 import { registerVideoIpcHandlers } from './ipc/video'
+import { registerManuscriptIpcHandlers } from './ipc/manuscript'
 import { registerSettingsIpcHandlers } from './ipc/settings'
 
 function createWindow(): void {
@@ -66,6 +67,7 @@ app.whenReady().then(() => {
   registerImageIpcHandlers()
   registerFrameIpcHandlers()
   registerVideoIpcHandlers()
+  registerManuscriptIpcHandlers()
   registerSettingsIpcHandlers()
 
   createWindow()
