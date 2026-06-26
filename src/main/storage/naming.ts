@@ -22,6 +22,15 @@ export function getContentFolderPath(documentsPath: string, keyword: string, dat
   return join(getOutputRoot(documentsPath), sanitizeKeyword(keyword), formatYYMMDD(date))
 }
 
+export function getCardImagePathFromHtmlPath(htmlPath: string): string {
+  const match = htmlPath.match(/^(.*)([/\\])html\2(.+)\.html$/)
+  if (!match) {
+    throw new Error(`예상한 카드 HTML 경로 형식이 아닙니다: ${htmlPath}`)
+  }
+  const [, prefix, separator, fileNameWithoutExt] = match
+  return `${prefix}${separator}image${separator}${fileNameWithoutExt}.png`
+}
+
 export function getCardHtmlPath(
   contentFolderPath: string,
   keyword: string,

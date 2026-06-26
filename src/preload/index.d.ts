@@ -20,6 +20,7 @@ import type {
   SaveApiKeyRequest,
   SaveApiKeyResponseData
 } from '../shared/ipc-settings'
+import type { RenderCardsRequest, RenderCardsResponseData } from '../shared/ipc-image'
 
 export interface Api {
   selectThumbnail: () => Promise<string | null>
@@ -35,6 +36,7 @@ export interface Api {
   editCardWithInstruction: (
     request: EditCardWithInstructionRequest
   ) => Promise<IpcResult<EditCardWithInstructionResponseData>>
+  renderCardsToImages: (request: RenderCardsRequest) => Promise<IpcResult<RenderCardsResponseData>>
 }
 
 declare global {

@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerContentIpcHandlers } from './ipc/content'
 import { registerCardIpcHandlers } from './ipc/card'
+import { registerImageIpcHandlers } from './ipc/image'
 import { registerSettingsIpcHandlers } from './ipc/settings'
 
 function createWindow(): void {
@@ -60,6 +61,7 @@ app.whenReady().then(() => {
 
   registerContentIpcHandlers()
   registerCardIpcHandlers()
+  registerImageIpcHandlers()
   registerSettingsIpcHandlers()
 
   createWindow()

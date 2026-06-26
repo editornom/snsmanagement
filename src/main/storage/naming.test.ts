@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   formatYYMMDD,
   getCardHtmlPath,
+  getCardImagePathFromHtmlPath,
   getContentFolderPath,
   getOutputRoot,
   sanitizeKeyword
@@ -69,5 +70,33 @@ describe('getCardHtmlPath', () => {
   it('sanitizes the keyword used in the file name', () => {
     const result = getCardHtmlPath('C:\\content', 'haion<>망분리', new Date(2026, 5, 25), 3)
     expect(result).toBe('C:\\content\\html\\260625_haion망분리_03.html')
+  })
+})
+
+describe('getCardImagePathFromHtmlPath', () => {
+  it('replaces the html directory segment with image and the extension with .png', () => {
+    const htmlPath = getCardHtmlPath(
+      'C:\\Users\\junghoo\\Documents\\SNS콘텐츠제작도구\\output\\haion망분리\\260625',
+      'haion망분리',
+      new Date(2026, 5, 25),
+      1
+    )
+    expect(getCardImagePathFromHtmlPath(htmlPath)).toBe(
+      'C:\\Users\\junghoo\\Documents\\SNS콘텐츠제작도구\\output\\haion망분리\\260625\\image\\260625_haion망분리_01.png'
+    )
+  })
+
+  it('supports forward-slash separators', () => {
+    expect(getCardImagePathFromHtmlPath('C:/content/html/260625_haion_10.html')).toBe(
+      'C:/content/image/260625_haion_10.png'
+    )
+  })
+
+  it('throws when the path has no html directory segment', () => {
+    expect(() => getCardImagePathFromHtmlPath('C:\\content\\260625_haion_01.html')).toThrow()
+  })
+
+  it('throws when the extension is not .html', () => {
+    expect(() => getCardImagePathFromHtmlPath('C:\\content\\html\\260625_haion_01.txt')).toThrow()
   })
 })

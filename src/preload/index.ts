@@ -30,6 +30,11 @@ import {
   type SaveApiKeyRequest,
   type SaveApiKeyResponseData
 } from '../shared/ipc-settings'
+import {
+  IMAGE_RENDER_CHANNEL,
+  type RenderCardsRequest,
+  type RenderCardsResponseData
+} from '../shared/ipc-image'
 
 // Custom APIs for renderer
 const api = {
@@ -56,7 +61,9 @@ const api = {
   editCardWithInstruction: (
     request: EditCardWithInstructionRequest
   ): Promise<IpcResult<EditCardWithInstructionResponseData>> =>
-    ipcRenderer.invoke(CARD_EDIT_WITH_INSTRUCTION_CHANNEL, request)
+    ipcRenderer.invoke(CARD_EDIT_WITH_INSTRUCTION_CHANNEL, request),
+  renderCardsToImages: (request: RenderCardsRequest): Promise<IpcResult<RenderCardsResponseData>> =>
+    ipcRenderer.invoke(IMAGE_RENDER_CHANNEL, request)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

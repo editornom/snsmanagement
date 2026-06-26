@@ -57,6 +57,8 @@ function App(): React.JSX.Element {
   const [instructionText, setInstructionText] = useState<Record<number, string>>({})
   const [previousHtml, setPreviousHtml] = useState<Record<number, string>>({})
   const [applyingInstruction, setApplyingInstruction] = useState<Record<number, boolean>>({})
+  const [renderingImages, setRenderingImages] = useState(false)
+  const [imageRenderResults, setImageRenderResults] = useState<Record<number, FormMessage>>({})
 
   const iframeRefs = useRef(new Map<number, HTMLIFrameElement>())
   const saveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
@@ -492,6 +494,58 @@ function App(): React.JSX.Element {
     }
   }
 
+  async function handleRenderImages(): Promise<void> {
+    const renderableCards = cardsRef.current.filter((item) => item.htmlPath)
+    if (renderableCards.length === 0) return
+
+    // Cancel pending debounced inline/code-panel saves first — otherwise one could fire after
+    // the live DOM is read below and redundantly re-save the same content mid-render.
+    for (const item of renderableCards) {
+      const pendingTimer = saveTimers.current.get(item.index)
+      if (pendingTimer) {
+        clearTimeout(pendingTimer)
+        saveTimers.current.delete(item.index)
+      }
+    }
+
+    setRenderingImages(true)
+    setCardsMessage(null)
+    setImageRenderResults({})
+
+    try {
+      const result = await window.api.renderCardsToImages({
+        cards: renderableCards.map((item) => {
+          const doc = iframeRefs.current.get(item.index)?.contentDocument
+          const html = doc ? serializeCardDocument(doc) : (item.html as string)
+          return { index: item.index, htmlPath: item.htmlPath as string, html }
+        })
+      })
+
+      if (result.ok) {
+        const nextResults: Record<number, FormMessage> = {}
+        for (const cardResult of result.data.results) {
+          nextResults[cardResult.index] =
+            cardResult.status === 'success'
+              ? {
+                  type: 'success',
+                  text: `카드 ${cardResult.index}: ${cardResult.imagePath} 저장 완료`
+                }
+              : {
+                  type: 'error',
+                  text: `카드 ${cardResult.index}: 렌더링 실패 - ${cardResult.error}`
+                }
+        }
+        setImageRenderResults(nextResults)
+      } else {
+        setCardsMessage({ type: 'error', text: result.error.message })
+      }
+    } catch {
+      setCardsMessage({ type: 'error', text: '이미지 렌더링 중 알 수 없는 오류가 발생했습니다' })
+    } finally {
+      setRenderingImages(false)
+    }
+  }
+
   return (
     <div className="app-root">
       <form className="api-key-form" onSubmit={handleSaveApiKey}>
@@ -579,6 +633,12 @@ function App(): React.JSX.Element {
             <div className={`message ${cardsMessage.type}`}>{cardsMessage.text}</div>
           )}
 
+          {cards.some((card) => card.htmlPath) && (
+            <button type="button" onClick={handleRenderImages} disabled={renderingImages}>
+              {renderingImages ? '이미지 렌더링 중...' : '이미지로 렌더링'}
+            </button>
+          )}
+
           <div className="card-list">
             {cards.map((card) => (
               <div key={card.index} className="card-preview">
@@ -617,6 +677,12 @@ function App(): React.JSX.Element {
                 )}
 
                 {card.saveError && <div className="message error">{card.saveError}</div>}
+
+                {imageRenderResults[card.index] && (
+                  <div className={`message ${imageRenderResults[card.index].type}`}>
+                    {imageRenderResults[card.index].text}
+                  </div>
+                )}
 
                 {!card.error && (
                   <button type="button" onClick={() => handleToggleCodePanel(card.index)}>
